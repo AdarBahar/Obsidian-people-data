@@ -1,0 +1,144 @@
+.definition-popover {
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border-hover);
+	border-radius: var(--radius-m);
+	position: absolute;
+	padding: var(--size-4-2) var(--size-4-3);
+	box-shadow: var(--shadow-s);
+	min-height: 100px;
+	min-width: 500px;
+	max-width: 600px;
+	overflow: auto;
+}
+
+.popover-header, .modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: var(--size-4-2);
+	gap: var(--size-4-2);
+	min-height: 32px;
+}
+
+.person-name {
+	margin: 0;
+	flex: 1;
+	font-size: var(--font-ui-large);
+	font-weight: 600;
+	line-height: 1.2;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	min-width: 0;
+}
+
+.company-info {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	text-align: right;
+	gap: var(--size-2-2);
+	flex-shrink: 0;
+}
+
+.company-logo {
+	order: 2;
+}
+
+.company-logo img {
+	max-height: 32px;
+	max-width: 64px;
+}
+
+.company-logo-default {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+	font-weight: bold;
+	text-align: center;
+	line-height: 1;
+}
+
+.company-name {
+	order: 1;
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+	font-weight: 600;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.person-details {
+	margin-bottom: var(--size-4-2);
+}
+
+.person-details > div {
+	margin-bottom: var(--size-2-1);
+}
+
+.person-details > div:last-child {
+	margin-bottom: 0;
+}
+
+.person-notes {
+	line-height: 1.4;
+}
+
+.person-notes > p:first-child {
+	margin-top: 0;
+}
+
+.person-notes > p:last-child {
+	margin-bottom: 0;
+}
+
+.definition-popover-filename {
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+	text-align: right;
+	margin-top: var(--size-2-1);
+	font-style: italic;
+}
+
+.def-decoration {
+	text-decoration: double underline var(--person-underline-color, #ff6b35);
+	-webkit-text-decoration: double underline var(--person-underline-color, #ff6b35);
+}
+
+.def-link-decoration {
+	text-decoration: underline var(--color-green) dotted;
+	-webkit-text-decoration: underline var(--color-green) dotted;
+	cursor: pointer;
+}
+
+.edit-modal-section-header {
+	margin-top: 5px;
+	margin-bottom: 5px;
+	color: var(--text-muted)
+}
+
+.edit-modal-aliases {
+	width: 100%;
+	resize: none;
+	font-size: var(--font-ui-medium);
+	height: 2em;
+}
+
+.edit-modal-textarea {
+	width: 100%;
+	height: 20vh;
+	resize: none;
+	font-size: var(--font-ui-medium);
+	margin-bottom: 10px;
+}
+
+.edit-modal-save-button {
+	font-size: var(--font-ui-medium);
+	float: right;
+	background-color: var(--interactive-normal);
+}
