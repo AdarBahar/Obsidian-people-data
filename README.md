@@ -1,11 +1,35 @@
 # Obsidian People Metadata
 
-A personal tool for managing and looking up people metadata within your notes.
+Augment names in your Obsidian pages with company, position and details.
+A personal tool for managing and looking up people metadata within your notes. Create company profiles, add person details, and get instant previews with company colors and logos.
 
-![dropdown](./img/person-tooltip.png)
+![Person Tooltip Preview](./img/person-tooltip.png)
 
+## 🚀 Installation
 
-## Basic usage
+### From Obsidian Community Plugins (Recommended)
+1. Open Obsidian Settings
+2. Go to Community Plugins and disable Safe Mode
+3. Click Browse and search for "People Metadata"
+4. Install and enable the plugin
+
+### Manual Installation
+1. Download the latest release from [GitHub Releases](https://github.com/AdarBahar/Obsidian-people-data/releases)
+2. Extract the files to your vault's `.obsidian/plugins/people-metadata/` folder
+3. Enable the plugin in Obsidian Settings → Community Plugins
+
+## ✨ Features
+
+- **🏢 Company Management**: Organize people by company with custom colors and logos
+- **💬 Smart Tooltips**: Hover over names to see rich person details
+- **➕ Add Person Modal**: User-friendly interface for adding new people
+- **🔄 Auto-Registration**: Automatically set up new files in the People folder
+- **🖼️ Logo Fallback**: Graceful fallback for broken company logos
+- **📱 Mobile Support**: Works seamlessly on both desktop and mobile
+- **🎨 Color Coding**: Assign colors to companies for visual organization
+- **📝 Rich Formatting**: Support for markdown in person descriptions
+
+## 📖 Basic Usage
 
 1. Create a folder, right-click on the folder in your file explorer, and select `Set people metadata folder`. This registers the folder as your people metadata folder.
 2. Within the folder, create metadata files (with any name of your choice).
@@ -95,7 +119,7 @@ You can use predefined color names instead of hex codes:
 **Muted Colors:** `slate`, `rose`, `lime`, `indigo`, `pink`, `brown`
 **Custom Colors:** `mint`, `coral`, `lavender`, `gold`, `silver`, `bronze`
 
-See [COMPANY_COLORS.md](COMPANY_COLORS.md) for the complete list with color previews.
+See [COMPANY_COLORS.md](documentation/COMPANY_COLORS.md) for the complete list with color previews.
 
 ## Auto-Registration and Template Generation
 
@@ -246,11 +270,51 @@ Or if you want to remove all contexts, you can delete the `def-context` property
 
 Whenever you find that the plugin is not detecting certain people or people files, run the `Refresh people` command to manually get the plugin to read your people files.
 
-## Feedback
+## 🐛 Troubleshooting
 
-I welcome any feedback on how to improve this tool.
-Do let me know by opening a Github issue if you find any bugs, or have any ideas for features or improvements.
+### Plugin Not Working?
+1. Make sure you have set a People metadata folder using the right-click menu
+2. Try running the "Refresh people" command
+3. Check that your files have the correct `def-type: consolidated` frontmatter
 
-## Contributing
+### Names Not Being Detected?
+1. Ensure the person's name matches exactly (case-sensitive)
+2. Run "Refresh people" command to reload the metadata
+3. Check that the person file is in the correct People folder
 
-If you're a programmer and would like to see certain features implemented, I welcome and would be grateful for contributions. If you are interested, please do let me know in the issue thread.
+### Company Colors Not Showing?
+1. Run the "Update company colors" command
+2. Verify the color property is set correctly in the company file frontmatter
+3. Try using predefined color names instead of hex codes
+
+## 📚 Documentation
+
+- **[Color Guide](documentation/COMPANY_COLORS.md)** - Complete list of available colors
+- **[Development Notes](documentation/)** - Additional documentation and examples
+
+## 🤝 Support & Feedback
+
+- **Issues**: [Report bugs or request features](https://github.com/AdarBahar/Obsidian-people-data/issues)
+- **Discussions**: [Community discussions](https://github.com/AdarBahar/Obsidian-people-data/discussions)
+
+I welcome any feedback on how to improve this tool. Please open a GitHub issue if you find any bugs or have ideas for features or improvements.
+
+## 🛠️ Contributing
+
+If you're a programmer and would like to see certain features implemented, I welcome and would be grateful for contributions. Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+For major changes, please open an issue first to discuss what you would like to change.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built for the [Obsidian](https://obsidian.md) community
+- Inspired by the need for better people and company management in personal knowledge bases

@@ -1,0 +1,6 @@
+Todo
+
+Done
+remove all debugging console messages
+remove deploy-test.sh script
+create a plugin package and publish
