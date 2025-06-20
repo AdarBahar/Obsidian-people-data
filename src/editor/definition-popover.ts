@@ -76,8 +76,21 @@ export class DefinitionPopover extends Component {
 
 	private getCmEditor(app: App) {
 		const activeView = app.workspace.getActiveViewOfType(MarkdownView);
-		const cmEditor = (activeView as any)?.editMode?.editor?.cm?.cm;
-		return cmEditor;
+		if (!activeView) {
+			return null;
+		}
+
+		// Access the CodeMirror editor through the view's editor property
+		// This is a safer way to access the internal editor without casting to any
+		const editor = activeView.editor;
+		if (!editor) {
+			return null;
+		}
+
+		// Try to access the CodeMirror instance through the editor
+		// @ts-ignore - This is accessing internal Obsidian API
+		const cmEditor = editor.cm?.cm;
+		return cmEditor || null;
 	}
 
 	private shouldOpenToLeft(horizontalOffset: number, containerStyle: CSSStyleDeclaration): boolean {

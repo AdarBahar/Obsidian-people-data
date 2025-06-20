@@ -16,10 +16,15 @@ const parseSettings: DefFileParseConfig = {
 	}
 }
 
-const file = {
-	path: "src/tests/consolidated-definitions-test.md"
-};
-const parser = new ConsolidatedDefParser(null as unknown as App, file as TFile, parseSettings);
+// Create a proper mock TFile object
+const mockFile = Object.create(TFile.prototype);
+Object.assign(mockFile, {
+	path: "src/tests/consolidated-definitions-test.md",
+	basename: "consolidated-definitions-test",
+	name: "consolidated-definitions-test.md",
+	extension: "md"
+});
+const parser = new ConsolidatedDefParser(null as unknown as App, mockFile, parseSettings);
 const definitions = parser.directParseFile(consolidatedDefData);
 
 test('Full names of people are parsed correctly', async () => {

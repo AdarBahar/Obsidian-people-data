@@ -31,10 +31,14 @@ const parseSettings: DefFileParseConfig = {
 
 describe('Color Frontmatter Tests', () => {
 	test('ConsolidatedDefParser should parse content correctly with color set via property', () => {
-		const mockFile = {
+		// Create a proper mock TFile object
+		const mockFile = Object.create(TFile.prototype);
+		Object.assign(mockFile, {
 			basename: "TestCompany",
-			path: "definitions/TestCompany.md"
-		} as TFile;
+			path: "definitions/TestCompany.md",
+			name: "TestCompany.md",
+			extension: "md"
+		});
 
 		const parser = new ConsolidatedDefParser(null as unknown as App, mockFile, parseSettings);
 
@@ -51,10 +55,14 @@ describe('Color Frontmatter Tests', () => {
 	});
 
 	test('ConsolidatedDefParser should handle hex color without # prefix', () => {
-		const mockFile = {
+		// Create a proper mock TFile object
+		const mockFile = Object.create(TFile.prototype);
+		Object.assign(mockFile, {
 			basename: "TestCompany",
-			path: "definitions/TestCompany.md"
-		} as TFile;
+			path: "definitions/TestCompany.md",
+			name: "TestCompany.md",
+			extension: "md"
+		});
 
 		const parser = new ConsolidatedDefParser(null as unknown as App, mockFile, parseSettings);
 
@@ -69,10 +77,14 @@ describe('Color Frontmatter Tests', () => {
 	});
 
 	test('ConsolidatedDefParser should handle missing color gracefully', () => {
-		const mockFile = {
+		// Create a proper mock TFile object
+		const mockFile = Object.create(TFile.prototype);
+		Object.assign(mockFile, {
 			basename: "TestCompany",
-			path: "definitions/TestCompany.md"
-		} as TFile;
+			path: "definitions/TestCompany.md",
+			name: "TestCompany.md",
+			extension: "md"
+		});
 
 		const parser = new ConsolidatedDefParser(null as unknown as App, mockFile, parseSettings);
 
