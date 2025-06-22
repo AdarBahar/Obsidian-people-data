@@ -1,6 +1,7 @@
 Todo
 Send mentions to LLM to provide summary
 remove extra lines - extension
+add to config - reset buttons (colors, count, etc)
 
 Done
 Utility CSV to markdown
