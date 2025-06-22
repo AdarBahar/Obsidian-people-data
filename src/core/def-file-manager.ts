@@ -1,8 +1,11 @@
 import { App, TFile, TFolder } from "obsidian";
 import { PTreeNode } from "src/editor/prefix-tree";
+import { OptimizedPrefixTree } from "./optimized-prefix-tree";
+import { OptimizedSearchEngine } from "./optimized-search-engine";
+import { OptimizedLineScanner, OptimizedScannerFactory } from "./optimized-line-scanner";
 import { DEFAULT_DEF_FOLDER } from "src/settings";
 import { normaliseWord } from "src/util/editor";
-import { logWarn } from "src/util/log";
+import { logWarn, logInfo } from "src/util/log";
 import { useRetry } from "src/util/retry";
 import { FileParser } from "./file-parser";
 import { DefFileType } from "./file-type";
@@ -30,6 +33,12 @@ export class DefManager {
 
 	localDefs: DefinitionRepo;
 
+	// Optimized search components
+	optimizedSearchEngine: OptimizedSearchEngine;
+	optimizedPrefixTree: OptimizedPrefixTree;
+	optimizedScanner: OptimizedLineScanner;
+	useOptimizedSearch: boolean = true;
+
 	constructor(app: App) {
 		this.app = app;
 		this.globalDefs = new DefinitionRepo();
@@ -38,6 +47,12 @@ export class DefManager {
 		this.globalPrefixTree = new PTreeNode();
 		this.consolidatedDefFiles = new Map<string, TFile>();
 		this.localDefs = new DefinitionRepo();
+
+		// Initialize optimized search components
+		this.optimizedSearchEngine = new OptimizedSearchEngine();
+		this.optimizedPrefixTree = new OptimizedPrefixTree();
+		this.optimizedScanner = OptimizedScannerFactory.getInstance()
+			.createScanner(this.optimizedPrefixTree, this.optimizedSearchEngine, 'global');
 
 		this.resetLocalConfigs()
 		this.lastUpdate = 0;
@@ -53,11 +68,28 @@ export class DefManager {
 	}
 
 	// Get the appropriate prefix tree to use for current active file
-	getPrefixTree() {
+	getPrefixTree(): PTreeNode {
+		// Always return legacy prefix tree for compatibility
 		if (this.shouldUseLocal) {
 			return this.localPrefixTree;
 		}
 		return this.globalPrefixTree;
+	}
+
+	// Get the optimized search engine
+	getOptimizedSearchEngine(): OptimizedSearchEngine {
+		return this.optimizedSearchEngine;
+	}
+
+	// Get the optimized scanner
+	getOptimizedScanner(): OptimizedLineScanner {
+		return this.optimizedScanner;
+	}
+
+	// Toggle between optimized and legacy search
+	setOptimizedSearch(enabled: boolean): void {
+		this.useOptimizedSearch = enabled;
+		logInfo(`Optimized search ${enabled ? 'enabled' : 'disabled'}`);
 	}
 
 	// Updates active file and rebuilds local prefix tree if necessary
@@ -177,6 +209,11 @@ export class DefManager {
 		this.globalPrefixTree = new PTreeNode();
 		this.globalDefs.clear();
 		this.globalDefFiles = new Map<string, TFile>();
+
+		// Reset optimized components
+		this.optimizedSearchEngine.clear();
+		this.optimizedPrefixTree.clear();
+		this.optimizedScanner.clearCache();
 	}
 
 	// Load all people from registered people folder
@@ -187,21 +224,34 @@ export class DefManager {
 		this.loadGlobals().then(this.updateActiveFile.bind(this));
 	}
 
-	private getDefRepo() {
-		return this.shouldUseLocal ? this.localDefs : this.globalDefs;
-	}
-
 	get(key: string) {
 		return this.getDefRepo().get(normaliseWord(key));
 	}
 
+	getAll(key: string): PersonMetadata[] {
+		return this.getDefRepo().getAll(normaliseWord(key));
+	}
+
 	getPersonCompany(key: string): string | undefined {
-		const person = this.get(key);
-		return person?.companyName;
+		// Use optimized cache for O(1) company lookup
+		const repo = this.getDefRepo();
+		return repo.companyCache.get(normaliseWord(key));
+	}
+
+	getDefRepo() {
+		return this.shouldUseLocal ? this.localDefs : this.globalDefs;
 	}
 
 	set(metadata: PersonMetadata) {
 		this.globalDefs.set(metadata);
+
+		// Also add to optimized search engine
+		if (this.useOptimizedSearch) {
+			this.optimizedSearchEngine.addPerson(metadata);
+			// Add to optimized prefix tree as well
+			const normalizedName = normaliseWord(metadata.fullName);
+			this.optimizedPrefixTree.add(normalizedName);
+		}
 	}
 
 	getDefFiles(): TFile[] {
@@ -279,11 +329,47 @@ export class DefManager {
 	}
 
 	private async buildPrefixTree() {
+		const startTime = Date.now();
+
+		// Build legacy prefix tree
 		const root = new PTreeNode();
 		this.globalDefs.getAllKeys().forEach(key => {
 			root.add(key, 0);
 		});
 		this.globalPrefixTree = root;
+
+		// Build optimized search system
+		if (this.useOptimizedSearch) {
+			logInfo("Building optimized search indexes...");
+
+			// Clear existing indexes
+			this.optimizedSearchEngine.clear();
+			this.optimizedPrefixTree.clear();
+
+			// Rebuild from current data
+			const allPeople: PersonMetadata[] = [];
+			for (const defMap of this.globalDefs.fileDefMap.values()) {
+				for (const person of defMap.values()) {
+					allPeople.push(person);
+					this.optimizedSearchEngine.addPerson(person);
+					this.optimizedPrefixTree.add(normaliseWord(person.fullName));
+				}
+			}
+
+			// Also add all keys to prefix tree
+			this.globalDefs.getAllKeys().forEach(key => {
+				this.optimizedPrefixTree.add(key);
+			});
+
+			// Compress the trie for better performance
+			this.optimizedPrefixTree.compress();
+
+			const endTime = Date.now();
+			const stats = this.optimizedPrefixTree.getStats();
+			const engineStats = this.optimizedSearchEngine.getStats();
+			logInfo(`Built optimized search system: ${allPeople.length} people, ${stats.totalWords} words, ${stats.totalNodes} nodes, ${endTime - startTime}ms`);
+			logInfo(`Search engine: ${engineStats.totalPeople} people, ${engineStats.totalCompanies} companies`);
+		}
 	}
 
 	private async parseFolder(folder: TFolder): Promise<PersonMetadata[]> {
@@ -314,35 +400,135 @@ export class DefManager {
 	getGlobalDefFolder() {
 		return window.NoteDefinition.settings.defFolder || DEFAULT_DEF_FOLDER;
 	}
+
+	/**
+	 * Get comprehensive performance statistics for the search system
+	 */
+	getPerformanceStats(): {
+		legacy: {
+			totalPeople: number;
+			totalFiles: number;
+			prefixTreeNodes: number;
+		};
+		optimized: {
+			searchEngine: any;
+			prefixTree: any;
+			scanner: any;
+		};
+		comparison: {
+			memoryUsage: string;
+			searchSpeedImprovement: string;
+		};
+	} {
+		const legacyStats = {
+			totalPeople: this.globalDefs.getAllKeys().size,
+			totalFiles: this.globalDefFiles.size,
+			prefixTreeNodes: this.estimatePrefixTreeSize(this.globalPrefixTree)
+		};
+
+		const optimizedStats = {
+			searchEngine: this.optimizedSearchEngine.getStats(),
+			prefixTree: this.optimizedPrefixTree.getStats(),
+			scanner: this.optimizedScanner.getPerformanceStats()
+		};
+
+		return {
+			legacy: legacyStats,
+			optimized: optimizedStats,
+			comparison: {
+				memoryUsage: this.calculateMemoryImprovement(legacyStats, optimizedStats),
+				searchSpeedImprovement: this.calculateSpeedImprovement(optimizedStats)
+			}
+		};
+	}
+
+	/**
+	 * Rebuild optimized indexes for better performance
+	 */
+	async rebuildOptimizedIndexes(): Promise<void> {
+		if (!this.useOptimizedSearch) return;
+
+		const startTime = Date.now();
+		logInfo("Rebuilding optimized search indexes...");
+
+		// Clear existing indexes
+		this.optimizedSearchEngine.clear();
+		this.optimizedPrefixTree.clear();
+
+		// Rebuild from current data
+		const allPeople: PersonMetadata[] = [];
+		for (const defMap of this.globalDefs.fileDefMap.values()) {
+			for (const person of defMap.values()) {
+				allPeople.push(person);
+				this.optimizedSearchEngine.addPerson(person);
+				this.optimizedPrefixTree.add(normaliseWord(person.fullName));
+			}
+		}
+
+		// Compress for optimal performance
+		this.optimizedPrefixTree.compress();
+
+		const endTime = Date.now();
+		const stats = this.getPerformanceStats();
+		logInfo(`Optimized indexes rebuilt in ${endTime - startTime}ms. Total people: ${allPeople.length}`);
+	}
+
+	// Private helper methods for performance analysis
+	private estimatePrefixTreeSize(node: PTreeNode, depth: number = 0): number {
+		let size = 1;
+		if (node.children) {
+			for (const child of node.children.values()) {
+				size += this.estimatePrefixTreeSize(child, depth + 1);
+			}
+		}
+		return size;
+	}
+
+	private calculateMemoryImprovement(legacyStats: any, optimizedStats: any): string {
+		const legacyMemory = legacyStats.prefixTreeNodes * 100; // Rough estimate
+		const optimizedMemory = optimizedStats.prefixTree.memoryEstimate;
+		const improvement = ((legacyMemory - optimizedMemory) / legacyMemory * 100).toFixed(1);
+		return `${improvement}% reduction`;
+	}
+
+	private calculateSpeedImprovement(optimizedStats: any): string {
+		const cacheHitRate = optimizedStats.scanner.cacheHitRate * 100;
+		const avgScanTime = optimizedStats.scanner.averageScanTime;
+		return `${cacheHitRate.toFixed(1)}% cache hit rate, ${avgScanTime.toFixed(2)}ms avg scan time`;
+	}
 }
 
 export class DefinitionRepo {
 	// file name -> {metadata-key -> metadata}
 	fileDefMap: Map<string, Map<string, PersonMetadata>>;
+	// Optimized lookup: normalized name -> array of all people with that name
+	nameIndex: Map<string, PersonMetadata[]>;
+	// Company lookup cache: normalized name -> company name (for first match)
+	companyCache: Map<string, string>;
 
 	constructor() {
 		this.fileDefMap = new Map<string, Map<string, PersonMetadata>>();
+		this.nameIndex = new Map<string, PersonMetadata[]>();
+		this.companyCache = new Map<string, string>();
 	}
 
 	getMapForFile(filePath: string) {
 		return this.fileDefMap.get(filePath);
 	}
 
-	get(key: string) {
-		for (let [_, defMap] of this.fileDefMap) {
-			const def = defMap.get(key);
-			if (def) {
-				return def;
-			}
-		}
+	get(key: string): PersonMetadata | undefined {
+		// Use optimized index for O(1) lookup instead of O(n) iteration
+		const people = this.nameIndex.get(key);
+		return people && people.length > 0 ? people[0] : undefined;
 	}
 
-	getAllKeys(): string[] {
-		const keys: string[] = [];
-		this.fileDefMap.forEach((defMap, _) => {
-			keys.push(...defMap.keys());
-		})
-		return keys;
+	getAll(key: string): PersonMetadata[] {
+		// Use optimized index for O(1) lookup
+		return this.nameIndex.get(key) || [];
+	}
+
+	getAllKeys(): Set<string> {
+		return new Set(this.nameIndex.keys());
 	}
 
 	set(metadata: PersonMetadata) {
@@ -351,24 +537,97 @@ export class DefinitionRepo {
 			defMap = new Map<string, PersonMetadata>();
 			this.fileDefMap.set(metadata.file.path, defMap);
 		}
-		// Use normalized fullName as the key for consistent lookup
+
 		const normalizedKey = normaliseWord(metadata.fullName);
-		// Prefer the first encounter over subsequent collisions
-		if (defMap.has(normalizedKey)) {
+
+		// Check if this exact person already exists in this file
+		const existingPerson = defMap.get(normalizedKey);
+		if (existingPerson && existingPerson.file.path === metadata.file.path) {
 			return;
 		}
+
+		// Add to file map
 		defMap.set(normalizedKey, metadata);
+
+		// Update optimized indexes
+		this.updateIndexes(normalizedKey, metadata);
+	}
+
+	private updateIndexes(normalizedKey: string, metadata: PersonMetadata) {
+		// Update name index for fast lookups
+		let peopleList = this.nameIndex.get(normalizedKey);
+		if (!peopleList) {
+			peopleList = [];
+			this.nameIndex.set(normalizedKey, peopleList);
+		}
+
+		// Check if this person is already in the index (avoid duplicates)
+		const existingIndex = peopleList.findIndex(p =>
+			p.file.path === metadata.file.path &&
+			normaliseWord(p.fullName) === normalizedKey
+		);
+
+		if (existingIndex === -1) {
+			peopleList.push(metadata);
+
+			// Sort by company name for consistent ordering in tabs
+			peopleList.sort((a, b) => {
+				const companyA = a.companyName || '';
+				const companyB = b.companyName || '';
+				return companyA.localeCompare(companyB);
+			});
+		} else {
+			// Update existing entry
+			peopleList[existingIndex] = metadata;
+		}
+
+		// Update company cache (for backward compatibility)
+		if (!this.companyCache.has(normalizedKey) && metadata.companyName) {
+			this.companyCache.set(normalizedKey, metadata.companyName);
+		}
 	}
 
 	clearForFile(filePath: string) {
 		const defMap = this.fileDefMap.get(filePath);
 		if (defMap) {
+			// Remove entries from indexes before clearing the file map
+			for (const [normalizedKey, metadata] of defMap) {
+				this.removeFromIndexes(normalizedKey, metadata);
+			}
 			defMap.clear();
 		}
 	}
 
 	clear() {
 		this.fileDefMap.clear();
+		this.nameIndex.clear();
+		this.companyCache.clear();
+	}
+
+	private removeFromIndexes(normalizedKey: string, metadata: PersonMetadata) {
+		// Remove from name index
+		const peopleList = this.nameIndex.get(normalizedKey);
+		if (peopleList) {
+			const index = peopleList.findIndex(p =>
+				p.file.path === metadata.file.path &&
+				normaliseWord(p.fullName) === normalizedKey
+			);
+			if (index !== -1) {
+				peopleList.splice(index, 1);
+
+				// If no more people with this name, remove the entry
+				if (peopleList.length === 0) {
+					this.nameIndex.delete(normalizedKey);
+					this.companyCache.delete(normalizedKey);
+				} else {
+					// Update company cache to first remaining person's company
+					const firstPerson = peopleList[0];
+					if (firstPerson.companyName) {
+						this.companyCache.set(normalizedKey, firstPerson.companyName);
+					}
+				}
+			}
+		}
 	}
 }
 

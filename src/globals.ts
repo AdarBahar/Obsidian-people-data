@@ -18,6 +18,7 @@ export interface GlobalVars {
 	};
 	triggerDefPreview: (el: HTMLElement) => void;
 	closeDefPreview: () => void;
+	delayedCloseDefPreview: () => void;
 	settings: Settings;
 	app: App;
 }
@@ -34,17 +35,24 @@ export function injectGlobals(settings: Settings, app: App, targetWindow: Window
 			const word = el.getAttr('def');
 			if (!word) return;
 
-			const def = getDefFileManager().get(word);
-			if (!def) return;
+			const allDefs = getDefFileManager().getAll(word);
+			if (!allDefs || allDefs.length === 0) return;
 
 			if (Platform.isMobile) {
 				const defModal = getDefinitionModal();
-				defModal.open(def);
+				// For mobile, show the first match for now (could be enhanced later)
+				defModal.open(allDefs[0]);
 				return;
 			}
 
 			const defPopover = getDefinitionPopover();
-			defPopover.openAtCoords(def, el.getBoundingClientRect());
+			if (allDefs.length === 1) {
+				// Single person, show normal tooltip
+				defPopover.openAtCoords(allDefs[0], el.getBoundingClientRect());
+			} else {
+				// Multiple people with same name, show tabbed tooltip
+				defPopover.openAtCoordsWithTabs(allDefs, el.getBoundingClientRect());
+			}
 		},
 		closeDefPreview: () => {
 			if (Platform.isMobile) {
@@ -52,9 +60,19 @@ export function injectGlobals(settings: Settings, app: App, targetWindow: Window
 				defModal.modal.close();
 				return;
 			}
-			
+
 			const defPopover = getDefinitionPopover();
 			defPopover.close();
+		},
+		delayedCloseDefPreview: () => {
+			if (Platform.isMobile) {
+				const defModal = getDefinitionModal();
+				defModal.modal.close();
+				return;
+			}
+
+			const defPopover = getDefinitionPopover();
+			defPopover.delayedClose();
 		},
 		settings,
 	}

@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, setTooltip } from "obsidian";
 import { DefFileType } from "./core/file-type";
+import { getDefFileManager } from "./core/def-file-manager";
 
 export enum PopoverEventSettings {
 	Hover = "hover",
@@ -35,9 +36,14 @@ export interface Settings {
 	enableSpellcheck: boolean;
 	defFolder: string;
 	autoRegisterNewFiles: boolean;
+	autoRefreshMentionCounts: boolean;
+	useOptimizedSearch: boolean;
 	popoverEvent: PopoverEventSettings;
 	defFileParseConfig: DefFileParseConfig;
 	defPopoverConfig: DefinitionPopoverConfig;
+	// Name autocomplete settings
+	enableNameAutocomplete: boolean;
+	nameAutocompleteTrigger: string;
 }
 
 export const DEFAULT_DEF_FOLDER = "people"
@@ -46,6 +52,8 @@ export const DEFAULT_SETTINGS: Partial<Settings> = {
 	enableInReadingView: true,
 	enableSpellcheck: true,
 	autoRegisterNewFiles: true,
+	autoRefreshMentionCounts: true,
+	useOptimizedSearch: false, // Temporarily disabled for debugging
 	popoverEvent: PopoverEventSettings.Hover,
 	defFileParseConfig: {
 		defaultFileType: DefFileType.Consolidated,
@@ -60,7 +68,10 @@ export const DEFAULT_SETTINGS: Partial<Settings> = {
 		maxWidth: 150,
 		maxHeight: 150,
 		popoverDismissEvent: PopoverDismissType.Click,
-	}
+	},
+	// Name autocomplete defaults
+	enableNameAutocomplete: true,
+	nameAutocompleteTrigger: '@name:'
 }
 
 export class SettingsTab extends PluginSettingTab {
@@ -76,7 +87,7 @@ export class SettingsTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		let { containerEl } = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
@@ -125,6 +136,66 @@ export class SettingsTab extends PluginSettingTab {
 					await this.saveCallback();
 				});
 			});
+
+		new Setting(containerEl)
+			.setName("Auto-refresh mention counts")
+			.setDesc("Automatically update mention counts when files are modified. Disable this if you experience performance issues with large vaults.")
+			.addToggle((component) => {
+				component.setValue(this.settings.autoRefreshMentionCounts ?? true);
+				component.onChange(async (val) => {
+					this.settings.autoRefreshMentionCounts = val;
+					await this.saveCallback();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Use optimized search")
+			.setDesc("Enable optimized search engine for better performance with large datasets. Includes advanced caching, fuzzy matching, and compressed prefix trees.")
+			.addToggle((component) => {
+				component.setValue(this.settings.useOptimizedSearch ?? true);
+				component.onChange(async (val) => {
+					this.settings.useOptimizedSearch = val;
+					// Update the definition manager
+					const defManager = getDefFileManager();
+					if (defManager) {
+						defManager.setOptimizedSearch(val);
+						if (val) {
+							await defManager.rebuildOptimizedIndexes();
+						}
+					}
+					await this.saveCallback();
+				});
+			});
+
+		new Setting(containerEl)
+			.setHeading()
+			.setName("Name Auto-completion");
+
+		new Setting(containerEl)
+			.setName("Enable name auto-completion")
+			.setDesc("Enable intelligent name suggestions when typing a trigger pattern")
+			.addToggle((component) => {
+				component.setValue(this.settings.enableNameAutocomplete ?? true);
+				component.onChange(async (val) => {
+					this.settings.enableNameAutocomplete = val;
+					await this.saveCallback();
+					this.display();
+				});
+			});
+
+		if (this.settings.enableNameAutocomplete) {
+			new Setting(containerEl)
+				.setName("Auto-completion trigger")
+				.setDesc("The text pattern that triggers name suggestions (e.g., '@name:' or '@@')")
+				.addText((component) => {
+					component.setValue(this.settings.nameAutocompleteTrigger ?? '@name:');
+					component.setPlaceholder('@name:');
+					component.onChange(async (val) => {
+						this.settings.nameAutocompleteTrigger = val || '@name:';
+						await this.saveCallback();
+					});
+				});
+		}
 		new Setting(containerEl)
 			.setName("People file format settings")
 			.setDesc("Customise parsing rules for People files")
@@ -305,6 +376,126 @@ export class SettingsTab extends PluginSettingTab {
 					await this.saveCallback();
 				})
 			});
+
+		// About section at the bottom
+		new Setting(containerEl)
+			.setHeading()
+			.setName("About");
+
+		new Setting(containerEl)
+			.setName("About People Metadata")
+			.setDesc("Learn more about this plugin, its features, and creator")
+			.addButton(component => {
+				component.setButtonText("Show Info");
+				component.setTooltip("Open plugin information");
+				component.onClick(() => {
+					this.showAboutModal();
+				});
+			});
+	}
+
+	private showAboutModal() {
+		const modal = new Modal(this.app);
+		modal.setTitle("About People Metadata");
+
+		const content = modal.contentEl;
+		content.addClass("about-people-metadata-modal");
+		// Add class to modal container for CSS targeting
+		modal.modalEl.addClass("about-people-metadata-modal-parent");
+
+		// Plugin header
+		const header = content.createDiv("about-header");
+		// header.createEl("h2", { text: "Obsidian People Metadata" });
+		header.createEl("p", {
+			text: "A powerful tool for managing and looking up people metadata within your notes.",
+			cls: "about-subtitle"
+		});
+
+		// Creator info
+		const creatorSection = content.createDiv("about-section");
+		creatorSection.createEl("h3", { text: "Creator" });
+		const creatorInfo = creatorSection.createDiv("creator-info");
+		creatorInfo.createEl("p", { text: "Created by Adar Bahar" });
+		creatorInfo.createEl("p", {
+			text: "Built for the Obsidian community with ❤️",
+			cls: "creator-subtitle"
+		});
+
+		// Objectives
+		const objectivesSection = content.createDiv("about-section");
+		objectivesSection.createEl("h3", { text: "Objectives" });
+		const objectivesList = objectivesSection.createEl("ul");
+		const objectives = [
+			"Augment names in your Obsidian pages with rich company and position details",
+			"Create comprehensive company profiles with custom colors and logos",
+			"Track mention counts and relationships across your entire vault",
+			"Provide instant previews and smart tooltips for people information",
+			"Optimize performance for large datasets with advanced search capabilities"
+		];
+		objectives.forEach(objective => {
+			objectivesList.createEl("li", { text: objective });
+		});
+
+		// Core Features
+		const featuresSection = content.createDiv("about-section");
+		featuresSection.createEl("h3", { text: "Core Features" });
+		const featuresList = featuresSection.createEl("ul");
+		const features = [
+			"🏢 Company Management - Organize people by company with custom colors and logos",
+			"💬 Smart Tooltips - Hover over names to see rich person details with mention counts",
+			"➕ Add Person Modal - User-friendly interface for adding new people",
+			"⚡ Name Auto-completion - Intelligent name suggestions with trigger patterns",
+			"🔄 Auto-Registration - Automatically set up new files in the People folder",
+			"📊 Mention Counting - Track how many times people are mentioned across your vault",
+			"🎯 Performance Optimization - Optimized search engine for large datasets (1000+ people)",
+			"📥 CSV Import - Bulk import people data from CSV files",
+			"📱 Mobile Support - Works seamlessly on both desktop and mobile",
+			"🎨 Color Coding - Assign colors to companies for visual organization"
+		];
+		features.forEach(feature => {
+			featuresList.createEl("li", { text: feature });
+		});
+
+		// Advanced Features
+		const advancedSection = content.createDiv("about-section");
+		advancedSection.createEl("h3", { text: "Advanced Features" });
+		const advancedList = advancedSection.createEl("ul");
+		const advancedFeatures = [
+			"🔍 Smart Search - Distinguish between task mentions and text mentions",
+			"⚡ Performance Monitoring - Real-time statistics and performance metrics",
+			"💾 Memory Efficiency - Advanced caching and compressed data structures",
+			"🎯 Fuzzy Matching - Find people even with typos or partial names",
+			"🔄 Auto-Refresh - Automatically update mention counts when files are modified",
+			"📈 Scalability - Handles large datasets without performance degradation"
+		];
+		advancedFeatures.forEach(feature => {
+			advancedList.createEl("li", { text: feature });
+		});
+
+		// Links section
+		const linksSection = content.createDiv("about-section");
+		linksSection.createEl("h3", { text: "Resources" });
+		const linksDiv = linksSection.createDiv("about-links");
+
+		const githubLink = linksDiv.createEl("a", {
+			text: "📚 Documentation & Source Code",
+			href: "https://github.com/AdarBahar/Obsidian-people-data"
+		});
+		githubLink.setAttr("target", "_blank");
+
+		const issuesLink = linksDiv.createEl("a", {
+			text: "🐛 Report Issues & Feature Requests",
+			href: "https://github.com/AdarBahar/Obsidian-people-data/issues"
+		});
+		issuesLink.setAttr("target", "_blank");
+
+		// Version info
+		const versionSection = content.createDiv("about-section");
+		versionSection.createEl("h3", { text: "Version Information" });
+		versionSection.createEl("p", { text: `Plugin Version: 1.1.0` });
+		versionSection.createEl("p", { text: `License: MIT` });
+
+		modal.open();
 	}
 }
 

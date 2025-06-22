@@ -3,6 +3,8 @@ import { PersonMetadata } from "src/core/model";
 // import { Definition } from "src/core/model"; // Removed as it's no longer used
 import { getSettings, PopoverDismissType } from "src/settings";
 import { logError } from "src/util/log";
+import { getMentionCounter } from "src/core/mention-counter";
+import { normaliseWord } from "src/util/editor";
 
 const DEF_POPOVER_ID = "definition-popover";
 
@@ -23,6 +25,10 @@ export class DefinitionPopover extends Component {
 	// Ref to the currently mounted popover
 	// There should only be one mounted popover at all times
 	mountedPopover: HTMLElement | undefined;
+	// Timeout for delayed closing to allow mouse movement to tooltip
+	private closeTimeout: NodeJS.Timeout | undefined;
+	// Reference to the original element that triggered the tooltip
+	private originalElement: HTMLElement | undefined;
 
 	constructor(plugin: Plugin) {
 		super();
@@ -56,6 +62,19 @@ export class DefinitionPopover extends Component {
 		this.registerClosePopoverListeners();
 	}
 
+	// Open at coordinates with multiple people (tabbed interface)
+	openAtCoordsWithTabs(people: PersonMetadata[], coords: Coordinates) {
+		this.unmount();
+		this.mountAtCoordinatesWithTabs(people, coords);
+
+		if (!this.mountedPopover) {
+			logError("mounting tabbed person popover failed");
+			return
+		}
+		this.registerClosePopoverListeners();
+		this.setupTabbedPopoverHoverHandling();
+	}
+
 	cleanUp() {
 		const popoverEls = document.getElementsByClassName(DEF_POPOVER_ID);
 		for (let i = 0; i < popoverEls.length; i++) {
@@ -64,7 +83,21 @@ export class DefinitionPopover extends Component {
 	}
 
 	close = () => {
+		this.clearCloseTimeout();
 		this.unmount();
+	}
+
+	// Delayed close to allow mouse movement to tooltip
+	delayedClose = () => {
+		this.clearCloseTimeout();
+		this.closeTimeout = setTimeout(() => {
+			this.close();
+		}, 150); // 150ms delay to allow mouse movement
+	}
+
+	// Cancel delayed close if mouse enters tooltip
+	cancelDelayedClose = () => {
+		this.clearCloseTimeout();
 	}
 
 	clickClose = () => {
@@ -72,6 +105,31 @@ export class DefinitionPopover extends Component {
 			return;
 		}
 		this.close();
+	}
+
+	private clearCloseTimeout() {
+		if (this.closeTimeout) {
+			clearTimeout(this.closeTimeout);
+			this.closeTimeout = undefined;
+		}
+	}
+
+	// Set up hover handling for tabbed popover to keep it open when interacting with tabs
+	private setupTabbedPopoverHoverHandling() {
+		if (!this.mountedPopover) return;
+
+		// Keep tooltip open when hovering over it
+		this.mountedPopover.addEventListener('mouseenter', this.cancelDelayedClose);
+		this.mountedPopover.addEventListener('mouseleave', this.delayedClose);
+
+		// Prevent tooltip from closing when clicking on tabs
+		const tabButtons = this.mountedPopover.querySelectorAll('.tab-button');
+		tabButtons.forEach(button => {
+			button.addEventListener('click', (e) => {
+				e.stopPropagation(); // Prevent click from bubbling up and closing tooltip
+				this.cancelDelayedClose(); // Cancel any pending close
+			});
+		});
 	}
 
 	private getCmEditor(app: App) {
@@ -146,6 +204,9 @@ export class DefinitionPopover extends Component {
 			detailsEl.createEl("div", { text: `Department: ${person.department}` });
 		}
 
+		// Add mention counts
+		this.addMentionCounts(detailsEl, person);
+
 		// Notes content
 		const contentEl = el.createEl("div", { cls: "person-notes" });
 		contentEl.setAttr("ctx", "person-popup");
@@ -156,6 +217,234 @@ export class DefinitionPopover extends Component {
 		this.postprocessMarkdown(contentEl, person);
 
 		return el;
+	}
+
+	// Creates optimized tabbed popover element for multiple people with same name
+	private createTabbedElement(people: PersonMetadata[], parent: HTMLElement): HTMLDivElement {
+		const popoverSettings = getSettings().defPopoverConfig;
+		const el = parent.createEl("div", {
+			cls: "definition-popover tabbed-popover",
+			attr: {
+				id: DEF_POPOVER_ID,
+				style: `visibility:hidden;${popoverSettings.backgroundColour ?
+		`background-color: ${popoverSettings.backgroundColour};` : ''}`
+			},
+		});
+
+		// Create tab header
+		const tabHeaderEl = el.createEl("div", { cls: "tab-header" });
+		const tabContentEl = el.createEl("div", { cls: "tab-content" });
+
+		// Group people by company for efficient rendering
+		const companiesMap = new Map<string, PersonMetadata[]>();
+		people.forEach(person => {
+			const companyName = person.companyName || 'Unknown Company';
+			if (!companiesMap.has(companyName)) {
+				companiesMap.set(companyName, []);
+			}
+			companiesMap.get(companyName)!.push(person);
+		});
+
+		let isFirstTab = true;
+		let activeTabContent: HTMLElement | null = null;
+
+		// Create tabs for each company
+		for (const [companyName, companyPeople] of companiesMap) {
+			// Use first person from company for tab data
+			const representativePerson = companyPeople[0];
+
+			// Create tab button
+			const tabButton = tabHeaderEl.createEl("button", {
+				cls: `tab-button ${isFirstTab ? 'active' : ''}`,
+				text: companyName,
+				attr: { 'data-company': companyName }
+			});
+
+			// Create tab content (initially hidden except first)
+			const tabPane = tabContentEl.createEl("div", {
+				cls: `tab-pane ${isFirstTab ? 'active' : ''}`,
+				attr: { 'data-company': companyName }
+			});
+
+			// Populate tab content with person info
+			this.populateTabContent(tabPane, representativePerson);
+
+			// Set up tab switching with optimized event handling
+			tabButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				this.switchTab(tabHeaderEl, tabContentEl, companyName);
+			});
+
+			if (isFirstTab) {
+				activeTabContent = tabPane;
+				isFirstTab = false;
+			}
+		}
+
+		return el;
+	}
+
+	private populateTabContent(tabPane: HTMLElement, person: PersonMetadata) {
+		// Create header with person name and company info
+		const headerEl = tabPane.createEl("div", { cls: "popover-header" });
+		headerEl.createEl("h2", { text: person.fullName, cls: "person-name" });
+
+		// Company info on the right side of header
+		if (person.companyName || person.companyLogo) {
+			const companyEl = headerEl.createEl("div", { cls: "company-info" });
+			if (person.companyLogo) {
+				const logoEl = companyEl.createEl("div", { cls: "company-logo" });
+				this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
+			}
+			if (person.companyName) {
+				companyEl.createEl("div", { text: person.companyName, cls: "company-name" });
+			}
+		}
+
+		// Add filename display if enabled
+		const popoverSettings = getSettings().defPopoverConfig;
+		if (popoverSettings.displayDefFileName) {
+			tabPane.createEl("div", {
+				text: person.file.basename,
+				cls: "definition-popover-filename"
+			});
+		}
+
+		// Person details
+		const detailsEl = tabPane.createEl("div", { cls: "person-details" });
+		if (person.position) {
+			detailsEl.createEl("div", { text: `Position: ${person.position}` });
+		}
+		if (person.department) {
+			detailsEl.createEl("div", { text: `Department: ${person.department}` });
+		}
+
+		// Add mention counts
+		this.addMentionCounts(detailsEl, person);
+
+		// Notes content
+		const contentEl = tabPane.createEl("div", { cls: "person-notes" });
+		contentEl.setAttr("ctx", "person-popup");
+
+		const currComponent = this;
+		MarkdownRenderer.render(this.app, person.notes, contentEl,
+			normalizePath(person.file.path), currComponent);
+		this.postprocessMarkdown(contentEl, person);
+	}
+
+	private switchTab(tabHeaderEl: HTMLElement, tabContentEl: HTMLElement, targetCompany: string) {
+		// Remove active class from all tabs and panes
+		tabHeaderEl.querySelectorAll('.tab-button').forEach(btn => btn.removeClass('active'));
+		tabContentEl.querySelectorAll('.tab-pane').forEach(pane => pane.removeClass('active'));
+
+		// Add active class to target tab and pane
+		const targetButton = tabHeaderEl.querySelector(`[data-company="${targetCompany}"]`);
+		const targetPane = tabContentEl.querySelector(`[data-company="${targetCompany}"]`);
+
+		if (targetButton && targetPane) {
+			targetButton.addClass('active');
+			targetPane.addClass('active');
+		}
+	}
+
+	/**
+	 * Add mention counts to the person details section
+	 * @param detailsEl The details container element
+	 * @param person The person metadata
+	 */
+	private addMentionCounts(detailsEl: HTMLElement, person: PersonMetadata): void {
+		try {
+			const mentionCounter = getMentionCounter();
+			const normalizedName = normaliseWord(person.fullName);
+			const mentionCounts = mentionCounter.getMentionCounts(normalizedName);
+
+			// Check if cache is stale and refresh if needed
+			if (mentionCounter.isCacheStale()) {
+				// Refresh counts for this specific person in the background
+				mentionCounter.updatePersonMentions(normalizedName);
+			}
+
+			if (mentionCounts && mentionCounts.totalMentions > 0) {
+				const mentionEl = detailsEl.createEl("div", { cls: "mention-counts" });
+
+				// Create main mention count display
+				const totalEl = mentionEl.createEl("span", {
+					cls: "mention-total",
+					text: `📝 ${mentionCounts.totalMentions} mention${mentionCounts.totalMentions !== 1 ? 's' : ''}`
+				});
+
+				// Add breakdown if there are both tasks and text mentions
+				if (mentionCounts.taskMentions > 0 && mentionCounts.textMentions > 0) {
+					const breakdownEl = mentionEl.createEl("span", { cls: "mention-breakdown" });
+					breakdownEl.createEl("span", {
+						cls: "mention-tasks",
+						text: ` (✅ ${mentionCounts.taskMentions} task${mentionCounts.taskMentions !== 1 ? 's' : ''}`
+					});
+					breakdownEl.createEl("span", {
+						cls: "mention-text",
+						text: `, 💬 ${mentionCounts.textMentions} text)`
+					});
+				} else if (mentionCounts.taskMentions > 0) {
+					mentionEl.createEl("span", {
+						cls: "mention-tasks-only",
+						text: ` (✅ tasks only)`
+					});
+				} else if (mentionCounts.textMentions > 0) {
+					mentionEl.createEl("span", {
+						cls: "mention-text-only",
+						text: ` (💬 text only)`
+					});
+				}
+
+				// Add refresh button for manual updates
+				const refreshBtn = mentionEl.createEl("span", {
+					cls: "mention-refresh",
+					text: " 🔄",
+					attr: { title: "Refresh mention counts" }
+				});
+
+				refreshBtn.addEventListener('click', async (e) => {
+					e.stopPropagation();
+					refreshBtn.textContent = " ⏳";
+					await mentionCounter.updatePersonMentions(normalizedName);
+					// Re-render the popover with updated counts
+					this.close();
+					setTimeout(() => {
+						// Trigger popover again - reopen at cursor position
+						this.openAtCursor(person);
+					}, 100);
+				});
+			} else {
+				// Show "no mentions" with refresh option
+				const mentionEl = detailsEl.createEl("div", { cls: "mention-counts" });
+				const noMentionsEl = mentionEl.createEl("span", {
+					cls: "mention-none",
+					text: "📝 No mentions found"
+				});
+
+				// Add refresh button
+				const refreshBtn = mentionEl.createEl("span", {
+					cls: "mention-refresh",
+					text: " 🔄",
+					attr: { title: "Refresh mention counts" }
+				});
+
+				refreshBtn.addEventListener('click', async (e) => {
+					e.stopPropagation();
+					refreshBtn.textContent = " ⏳";
+					await mentionCounter.updatePersonMentions(normalizedName);
+					// Re-render the popover with updated counts
+					this.close();
+					setTimeout(() => {
+						// Trigger popover again - reopen at cursor position
+						this.openAtCursor(person);
+					}, 100);
+				});
+			}
+		} catch (error) {
+			// Silently fail if mention counter is not available
+			// This prevents errors during initialization
+		}
 	}
 
 	private renderCompanyLogoWithFallback(logoMarkdown: string, logoEl: HTMLElement, person: PersonMetadata) {
@@ -249,6 +538,17 @@ export class DefinitionPopover extends Component {
 		this.positionAndSizePopover(mdView, coords);
 	}
 
+	private mountAtCoordinatesWithTabs(people: PersonMetadata[], coords: Coordinates) {
+		const mdView = this.app.workspace.getActiveViewOfType(MarkdownView)
+		if (!mdView) {
+			logError("Could not mount tabbed popover: No active markdown view found");
+			return;
+		}
+
+		this.mountedPopover = this.createTabbedElement(people, mdView.containerEl);
+		this.positionAndSizePopover(mdView, coords);
+	}
+
 	// Position and display popover
 	private positionAndSizePopover(mdView: MarkdownView, coords: Coordinates) {
 		if (!this.mountedPopover) {
@@ -295,6 +595,11 @@ export class DefinitionPopover extends Component {
 		if (!this.mountedPopover) {
 			return
 		}
+
+		// Clean up timeout and references
+		this.clearCloseTimeout();
+		this.originalElement = undefined;
+
 		this.mountedPopover.remove();
 		this.mountedPopover = undefined;
 

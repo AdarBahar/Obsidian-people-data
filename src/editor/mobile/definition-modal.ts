@@ -1,6 +1,8 @@
 import { App, Component, MarkdownRenderer, normalizePath, Modal } from "obsidian";
 // import { Definition } from "src/core/model"; // Removed as it's no longer used
 import { PersonMetadata } from "src/core/model";
+import { getMentionCounter } from "src/core/mention-counter";
+import { normaliseWord } from "src/util/editor";
 
 let defModal: DefinitionModal;
 
@@ -42,6 +44,9 @@ export class DefinitionModal extends Component {
 			detailsEl.createEl("div", { text: `Department: ${person.department}` });
 		}
 
+		// Add mention counts
+		this.addMentionCounts(detailsEl, person);
+
 		// Notes content
 		const notesContent = this.modal.contentEl.createEl("div", {
 			cls: "person-notes",
@@ -52,6 +57,55 @@ export class DefinitionModal extends Component {
 		MarkdownRenderer.render(this.app, person.notes, notesContent,
 			normalizePath(person.file.path) ?? '', this);
 		this.modal.open();
+	}
+
+	/**
+	 * Add mention counts to the person details section
+	 * @param detailsEl The details container element
+	 * @param person The person metadata
+	 */
+	private addMentionCounts(detailsEl: HTMLElement, person: PersonMetadata): void {
+		try {
+			const mentionCounter = getMentionCounter();
+			const normalizedName = normaliseWord(person.fullName);
+			const mentionCounts = mentionCounter.getMentionCounts(normalizedName);
+
+			if (mentionCounts && mentionCounts.totalMentions > 0) {
+				const mentionEl = detailsEl.createEl("div", { cls: "mention-counts" });
+
+				// Create main mention count display
+				const totalEl = mentionEl.createEl("span", {
+					cls: "mention-total",
+					text: `📝 ${mentionCounts.totalMentions} mention${mentionCounts.totalMentions !== 1 ? 's' : ''}`
+				});
+
+				// Add breakdown if there are both tasks and text mentions
+				if (mentionCounts.taskMentions > 0 && mentionCounts.textMentions > 0) {
+					const breakdownEl = mentionEl.createEl("span", { cls: "mention-breakdown" });
+					breakdownEl.createEl("span", {
+						cls: "mention-tasks",
+						text: ` (✅ ${mentionCounts.taskMentions} task${mentionCounts.taskMentions !== 1 ? 's' : ''}`
+					});
+					breakdownEl.createEl("span", {
+						cls: "mention-text",
+						text: `, 💬 ${mentionCounts.textMentions} text)`
+					});
+				} else if (mentionCounts.taskMentions > 0) {
+					mentionEl.createEl("span", {
+						cls: "mention-tasks-only",
+						text: ` (✅ tasks only)`
+					});
+				} else if (mentionCounts.textMentions > 0) {
+					mentionEl.createEl("span", {
+						cls: "mention-text-only",
+						text: ` (💬 text only)`
+					});
+				}
+			}
+		} catch (error) {
+			// Silently fail if mention counter is not available
+			// This prevents errors during initialization
+		}
 	}
 
 	private renderCompanyLogoWithFallback(logoMarkdown: string, logoEl: HTMLElement, person: PersonMetadata) {

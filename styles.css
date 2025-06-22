@@ -142,3 +142,466 @@
 	float: right;
 	background-color: var(--interactive-normal);
 }
+
+/* Tabbed Popover Styles */
+.tabbed-popover {
+	min-width: 500px;
+	max-width: 650px;
+}
+
+.tab-header {
+	display: flex;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: var(--size-4-2);
+	gap: 2px;
+	overflow-x: auto;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.tab-header::-webkit-scrollbar {
+	display: none;
+}
+
+.tab-button {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-bottom: none;
+	border-radius: var(--radius-s) var(--radius-s) 0 0;
+	padding: var(--size-2-2) var(--size-4-2);
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	color: var(--text-muted);
+	white-space: nowrap;
+	min-width: 80px;
+	text-align: center;
+	transition: all 0.15s ease;
+	position: relative;
+	flex-shrink: 0;
+}
+
+.tab-button:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	cursor: pointer;
+}
+
+.tab-button.active {
+	background: var(--background-primary);
+	color: var(--text-normal);
+	border-color: var(--background-modifier-border-hover);
+	font-weight: 600;
+	z-index: 1;
+}
+
+.tab-button.active::after {
+	content: '';
+	position: absolute;
+	bottom: -1px;
+	left: 0;
+	right: 0;
+	height: 1px;
+	background: var(--background-primary);
+}
+
+.tab-content {
+	position: relative;
+	min-height: 150px;
+}
+
+.tab-pane {
+	display: none;
+	animation: fadeIn 0.2s ease-in-out;
+}
+
+.tab-pane.active {
+	display: block;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Optimize tab switching performance */
+.tab-pane:not(.active) {
+	position: absolute;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+/* Responsive tab design for smaller screens */
+@media (max-width: 600px) {
+	.tabbed-popover {
+		min-width: 300px;
+		max-width: 400px;
+	}
+
+	.tab-button {
+		min-width: 60px;
+		padding: var(--size-2-1) var(--size-2-2);
+		font-size: var(--font-ui-smaller);
+	}
+}
+
+/* Mention Counts Styles */
+.mention-counts {
+	margin-top: var(--size-2-2);
+	padding: var(--size-2-1) var(--size-2-2);
+	background: var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	border-left: 3px solid var(--interactive-accent);
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+.mention-total {
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.mention-breakdown {
+	font-size: var(--font-ui-smaller);
+	opacity: 0.8;
+}
+
+.mention-tasks {
+	color: var(--color-green);
+}
+
+.mention-text {
+	color: var(--color-blue);
+}
+
+.mention-tasks-only {
+	color: var(--color-green);
+	font-size: var(--font-ui-smaller);
+	opacity: 0.8;
+}
+
+.mention-text-only {
+	color: var(--color-blue);
+	font-size: var(--font-ui-smaller);
+	opacity: 0.8;
+}
+
+.mention-none {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+.mention-refresh {
+	cursor: pointer;
+	opacity: 0.6;
+	transition: opacity 0.2s ease;
+	font-style: normal;
+	user-select: none;
+	margin-left: auto;
+	padding: 2px 4px;
+	border-radius: var(--radius-xs);
+}
+
+.mention-refresh:hover {
+	opacity: 1;
+	background: var(--background-modifier-hover);
+}
+
+/* Hover effect for mention counts */
+.mention-counts:hover {
+	background: var(--background-modifier-hover);
+	transition: background-color 0.15s ease;
+}
+
+/* Name Autocomplete Suggestion Styles */
+.name-autocomplete-suggestion {
+	padding: var(--size-2-2) var(--size-4-2);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+	border-left: 3px solid transparent;
+}
+
+.name-autocomplete-suggestion:hover,
+.name-autocomplete-suggestion.is-selected {
+	background: var(--background-modifier-hover);
+}
+
+.name-suggestion-container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+	position: relative;
+}
+
+.name-suggestion-name {
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	color: var(--text-normal);
+	line-height: 1.2;
+}
+
+.name-suggestion-details {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	line-height: 1.1;
+}
+
+.name-suggestion-mentions {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	font-style: italic;
+	position: absolute;
+	right: 0;
+	top: 0;
+}
+
+.name-suggestion-color-indicator {
+	position: absolute;
+	left: -6px;
+	top: 0;
+	bottom: 0;
+	width: 3px;
+	border-radius: var(--radius-xs);
+	opacity: 0.8;
+}
+
+/* Responsive design for smaller suggestion popups */
+@media (max-width: 500px) {
+	.name-suggestion-container {
+		gap: var(--size-2-1);
+	}
+
+	.name-suggestion-mentions {
+		position: static;
+		margin-top: var(--size-2-1);
+	}
+}
+
+/* About People Metadata Modal Styles - Target the actual Obsidian modal container */
+.modal:has(.about-people-metadata-modal),
+.modal-container:has(.about-people-metadata-modal),
+.about-people-metadata-modal-container {
+	max-width: 1200px !important;
+	width: 98vw !important;
+}
+
+.modal:has(.about-people-metadata-modal) .modal-content,
+.modal-container:has(.about-people-metadata-modal) .modal-content,
+.about-people-metadata-modal-container .modal-content {
+	max-width: 1200px !important;
+	width: 98vw !important;
+	max-height: 95vh;
+	overflow-y: auto;
+	overflow-x: hidden;
+	box-sizing: border-box;
+}
+
+/* Fallback for browsers that don't support :has() */
+.modal.about-people-metadata-modal-parent {
+	max-width: 1000px !important;
+	width: 98vw !important;
+}
+
+.modal.about-people-metadata-modal-parent .modal-content {
+	max-width: 1000px !important;
+	width: 98vw !important;
+	max-height: 95vh;
+	overflow-y: auto;
+	overflow-x: hidden;
+	box-sizing: border-box;
+}
+
+/* Additional aggressive overrides for Obsidian's modal constraints */
+.about-people-metadata-modal-parent.modal {
+	max-width: 800px !important;
+	width: 98vw !important;
+	min-width: 800px !important;
+}
+
+.about-people-metadata-modal-parent.modal > .modal-content {
+	max-width: 800px !important;
+	width: 98vw !important;
+	min-width: 800px !important;
+}
+
+.about-people-metadata-modal {
+	max-width: 100%;
+	width: 100%;
+	max-height: 95vh;
+	overflow-y: auto;
+	overflow-x: hidden;
+	box-sizing: border-box;
+}
+
+/* Ensure all content respects container width */
+.about-people-metadata-modal * {
+	max-width: 100%;
+	box-sizing: border-box;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.about-header {
+	text-align: center;
+	margin-bottom: var(--size-4-2);
+	padding-bottom: var(--size-2-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.about-header h2 {
+	margin: 0 0 var(--size-2-2) 0;
+	color: var(--text-normal);
+	font-size: var(--font-ui-large);
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.about-subtitle {
+	margin: 0;
+	color: var(--text-muted);
+	font-style: italic;
+	font-size: var(--font-ui-medium);
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.about-section {
+	margin-bottom: var(--size-4-1);
+}
+
+.about-section h3 {
+	margin: 0 0 var(--size-2-2) 0;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	border-bottom: 1px solid var(--background-modifier-border-hover);
+	padding-bottom: var(--size-2-1);
+}
+
+.about-section ul {
+	margin: var(--size-2-1) 0;
+	padding-left: var(--size-4-2);
+}
+
+.about-section li {
+	margin-bottom: var(--size-2-1);
+	line-height: 1.5;
+	color: var(--text-normal);
+	word-wrap: break-word;
+	word-break: break-word;
+	overflow-wrap: break-word;
+	max-width: 100%;
+}
+
+.creator-info {
+	text-align: center;
+	padding: var(--size-2-1);
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	margin: var(--size-2-1) 0;
+}
+
+.creator-info p {
+	margin: var(--size-2-1) 0;
+}
+
+.creator-subtitle {
+	color: var(--text-muted);
+	font-style: italic;
+	font-size: var(--font-ui-small);
+}
+
+.about-links {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+}
+
+.about-links a {
+	display: inline-block;
+	padding: var(--size-2-1) var(--size-4-1);
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	text-decoration: none;
+	border-radius: var(--radius-s);
+	transition: background-color 0.15s ease;
+	font-size: var(--font-ui-small);
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.about-links a:hover {
+	background: var(--interactive-hover);
+	text-decoration: none;
+}
+
+.about-section:last-child {
+	margin-bottom: 0;
+	padding-top: var(--size-2-2);
+	border-top: 1px solid var(--background-modifier-border);
+	text-align: center;
+}
+
+.about-section:last-child p {
+	margin: var(--size-2-1) 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+/* Responsive width adjustments for About modal - Target Obsidian modal container */
+@media (min-width: 1100px) {
+	.modal:has(.about-people-metadata-modal),
+	.about-people-metadata-modal-parent.modal {
+		width: 1000px !important;
+		max-width: 1000px !important;
+		min-width: 1000px !important;
+	}
+	.modal:has(.about-people-metadata-modal) .modal-content,
+	.about-people-metadata-modal-parent.modal .modal-content {
+		width: 1000px !important;
+		max-width: 1000px !important;
+		min-width: 1000px !important;
+	}
+}
+
+@media (min-width: 768px) and (max-width: 1099px) {
+	.modal:has(.about-people-metadata-modal),
+	.about-people-metadata-modal-parent.modal {
+		width: 95vw !important;
+		max-width: 95vw !important;
+		min-width: 95vw !important;
+	}
+	.modal:has(.about-people-metadata-modal) .modal-content,
+	.about-people-metadata-modal-parent.modal .modal-content {
+		width: 95vw !important;
+		max-width: 95vw !important;
+		min-width: 95vw !important;
+	}
+}
+
+@media (max-width: 767px) {
+	.modal:has(.about-people-metadata-modal),
+	.about-people-metadata-modal-parent.modal {
+		width: 98vw !important;
+		max-width: 98vw !important;
+		min-width: 98vw !important;
+	}
+	.modal:has(.about-people-metadata-modal) .modal-content,
+	.about-people-metadata-modal-parent.modal .modal-content {
+		width: 98vw !important;
+		max-width: 98vw !important;
+		min-width: 98vw !important;
+	}
+}

@@ -1,6 +1,10 @@
 Todo
+Send mentions to LLM to provide summary
+remove extra lines - extension
 
 Done
-remove all debugging console messages
-remove deploy-test.sh script
-create a plugin package and publish
+Utility CSV to markdown
+Check if a name is duplicated
+Count number of mentions
+Optimize the name's search and identification so that the solution can support large amount of names and companies
+Auto complete names

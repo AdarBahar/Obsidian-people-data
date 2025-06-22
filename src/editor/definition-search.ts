@@ -1,5 +1,6 @@
 import { getDefFileManager } from "src/core/def-file-manager";
 import { PTreeNode, PTreeTraverser } from "./prefix-tree";
+import { OptimizedLineScanner } from "src/core/optimized-line-scanner";
 
 // Information of phrase that can be used to add decorations within the editor
 export interface PhraseInfo {
@@ -10,18 +11,47 @@ export interface PhraseInfo {
 
 export class LineScanner {
 	prefixTree: PTreeNode;
+	private optimizedScanner?: OptimizedLineScanner;
 
 	private cnLangRegex = /\p{Script=Han}/u;
 	private terminatingCharRegex = /[!@#$%^&*()\+={}[\]:;"'<>,.?\/|\\\r\n （）＊＋，－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､　、〃〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟—‘’‛“”„‟…‧﹏﹑﹔·。]/;
 
 	constructor(pTree?: PTreeNode) {
-		this.prefixTree = pTree ? pTree : getDefFileManager().getPrefixTree();
+		// Always use legacy prefix tree for compatibility
+		const defManager = getDefFileManager();
+		const legacyTree = pTree || defManager.globalPrefixTree;
+		this.prefixTree = legacyTree;
+
+		// Try to use optimized scanner if available
+		try {
+			if (defManager.useOptimizedSearch) {
+				this.optimizedScanner = defManager.getOptimizedScanner();
+			}
+		} catch (error) {
+			// Fall back to legacy scanning if optimized scanner not available
+		}
 	}
 
 
 	scanLine(line: string, offset?: number): PhraseInfo[] {
+		// Use optimized scanner if available and enabled
+		if (this.optimizedScanner) {
+			try {
+				return this.optimizedScanner.scanLine(line, offset || 0);
+			} catch (error) {
+				console.warn("Optimized scanner failed, falling back to legacy:", error);
+				// Fall through to legacy implementation
+			}
+		}
+
+		// Legacy implementation
 		let traversers: PTreeTraverser[] = [];
 		const phraseInfos: PhraseInfo[] = [];
+
+		// Check if prefix tree has data
+		if (!this.prefixTree || !this.prefixTree.children || this.prefixTree.children.size === 0) {
+			return [];
+		}
 
 		for (let i = 0; i < line.length; i++) {
 			const c = line.charAt(i).toLowerCase();
@@ -46,6 +76,7 @@ export class LineScanner {
 				return !!traverser.currPtr;
 			});
 		}
+
 		return phraseInfos;
 	}
 

@@ -92,9 +92,19 @@ function getNormalDecorationSpan(container: HTMLElement, phraseInfo: PhraseInfo,
 	// Add mouse leave listener for hover popover behavior
 	const settings = getSettings();
 	if (settings.popoverEvent !== PopoverEventSettings.Click) {
-		span.addEventListener("mouseleave", () => {
-			window.NoteDefinition.closeDefPreview();
-		});
+		// Check if this person has multiple entries for delayed close behavior
+		const allMatches = getDefFileManager().getAll(phraseInfo.phrase);
+		if (allMatches && allMatches.length > 1) {
+			// Use delayed close for people with multiple entries to allow tab interaction
+			span.addEventListener("mouseleave", () => {
+				window.NoteDefinition.delayedCloseDefPreview();
+			});
+		} else {
+			// Use immediate close for single entries
+			span.addEventListener("mouseleave", () => {
+				window.NoteDefinition.closeDefPreview();
+			});
+		}
 	}
 	
 	return span;
