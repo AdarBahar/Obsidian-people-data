@@ -1,6 +1,6 @@
 import { App, TFile } from "obsidian";
 import { BaseDefParser } from "src/core/base-def-parser";
-import { DefFileParseConfig } from "src/settings";
+import { DefFileParseConfig, getSettings } from "src/settings";
 import { DefFileType } from "./file-type";
 // import { Definition } from "./model"; // Removed as it's no longer used
 import { FilePosition, PersonMetadata } from "./model";
@@ -33,7 +33,7 @@ export class ConsolidatedDefParser extends BaseDefParser {
 		this.app = app;
 		this.file = file;
 
-		this.parseSettings = parseSettings ? parseSettings : this.getParseSettings();
+		this.parseSettings = parseSettings || getSettings().defFileParseConfig;
 
 		this.defBuffer = {};
 		this.inDefinition = false;

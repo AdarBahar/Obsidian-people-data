@@ -1,13 +1,13 @@
-import { DefFileParseConfig, getSettings } from "src/settings";
+import { DefFileParseConfig } from "src/settings";
 
 export class BaseDefParser {
-	parseSettings: DefFileParseConfig;
+	parseSettings?: DefFileParseConfig;
 
 	constructor(parseSettings?: DefFileParseConfig) {
-		this.parseSettings = parseSettings ? parseSettings : this.getParseSettings();
+		this.parseSettings = parseSettings;
 	}
 
-    getParseSettings(): DefFileParseConfig {
-		return getSettings().defFileParseConfig;
+    getParseSettings(): DefFileParseConfig | undefined {
+		return this.parseSettings;
 	}
 }

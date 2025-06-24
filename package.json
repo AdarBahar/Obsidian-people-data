@@ -8,8 +8,7 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"test": "jest --config ./jest.config.js",
-		"prepare": "husky",
-		"deploy-test": "npm run build && node deploy-test.mjs"
+		"prepare": "husky"
 	},
 	"keywords": ["obsidian", "plugin", "people", "metadata", "contacts", "company", "profiles"],
 	"author": "Adar Bahar",

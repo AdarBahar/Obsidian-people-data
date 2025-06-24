@@ -20,3 +20,7 @@ data.json
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
+
+# Development deployment scripts (not for public use)
+deploy-test.mjs
+deploy-prod.mjs
