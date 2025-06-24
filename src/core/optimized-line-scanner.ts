@@ -166,24 +166,50 @@ export class OptimizedLineScanner {
     private scanWithWordBoundaries(line: string, offset: number): PhraseInfo[] {
         const results: PhraseInfo[] = [];
         const words = line.split(this.wordBoundaryRegex).filter(w => w.trim().length > 0);
-        let currentPos = 0;
 
-        for (const word of words) {
-            const wordStart = line.indexOf(word, currentPos);
-            if (wordStart === -1) continue;
+        // First, try to match multi-word phrases (longest matches first)
+        for (let i = 0; i < words.length; i++) {
+            for (let j = Math.min(i + 4, words.length); j > i; j--) { // Try up to 4-word combinations
+                const phrase = words.slice(i, j).join(' ');
+                const normalizedPhrase = phrase.toLowerCase().trim();
+                const matches = this.searchEngine.findByName(normalizedPhrase);
 
-            const normalizedWord = word.toLowerCase().trim();
-            const matches = this.searchEngine.findByName(normalizedWord);
-            
-            if (matches.length > 0) {
-                results.push({
-                    phrase: normalizedWord,
-                    from: offset + wordStart,
-                    to: offset + wordStart + word.length
-                });
+                if (matches.length > 0) {
+                    const phraseStart = line.indexOf(phrase);
+                    if (phraseStart !== -1) {
+                        results.push({
+                            phrase: normalizedPhrase,
+                            from: offset + phraseStart,
+                            to: offset + phraseStart + phrase.length
+                        });
+                        // Skip the words we just matched to avoid overlaps
+                        i = j - 1;
+                        break;
+                    }
+                }
             }
+        }
 
-            currentPos = wordStart + word.length;
+        // If no multi-word matches found, fall back to single words
+        if (results.length === 0) {
+            let currentPos = 0;
+            for (const word of words) {
+                const wordStart = line.indexOf(word, currentPos);
+                if (wordStart === -1) continue;
+
+                const normalizedWord = word.toLowerCase().trim();
+                const matches = this.searchEngine.findByName(normalizedWord);
+
+                if (matches.length > 0) {
+                    results.push({
+                        phrase: normalizedWord,
+                        from: offset + wordStart,
+                        to: offset + wordStart + word.length
+                    });
+                }
+
+                currentPos = wordStart + word.length;
+            }
         }
 
         return results;
@@ -214,22 +240,30 @@ export class OptimizedLineScanner {
     }
 
     private deduplicateAndSort(results: PhraseInfo[]): PhraseInfo[] {
-        // Remove duplicates and overlapping matches
-        const uniqueResults = new Map<string, PhraseInfo>();
-        
-        for (const result of results) {
-            const key = `${result.from}-${result.to}`;
-            if (!uniqueResults.has(key) || 
-                uniqueResults.get(key)!.phrase.length < result.phrase.length) {
-                uniqueResults.set(key, result);
+        // Remove overlapping matches, preferring longer ones
+        const sortedResults = results.sort((a, b) => {
+            // First sort by length (longer first), then by position
+            if (a.phrase.length !== b.phrase.length) {
+                return b.phrase.length - a.phrase.length;
+            }
+            return a.from - b.from;
+        });
+
+        const finalResults: PhraseInfo[] = [];
+
+        for (const result of sortedResults) {
+            // Check if this result overlaps with any already accepted result
+            const hasOverlap = finalResults.some(existing =>
+                (result.from < existing.to && result.to > existing.from)
+            );
+
+            if (!hasOverlap) {
+                finalResults.push(result);
             }
         }
 
-        // Sort by position, then by length (prefer longer matches)
-        return Array.from(uniqueResults.values()).sort((a, b) => {
-            if (a.from !== b.from) return a.from - b.from;
-            return b.phrase.length - a.phrase.length;
-        });
+        // Sort final results by position for consistent output
+        return finalResults.sort((a, b) => a.from - b.from);
     }
 
     private isValidStart(line: string, ptr: number): boolean {

@@ -86,22 +86,33 @@ export function scanText(text: string, offset: number, pTree?: PTreeNode): Phras
 		internalOffset += line.length + 1;
 	});
 
-	// Decorations need to be sorted by 'from' ascending, then 'to' descending
-	// This allows us to prefer longer words over shorter ones
-	phraseInfos.sort((a, b) => b.to - a.to);
-	phraseInfos.sort((a, b) => a.from - b.from);
+	// Decorations need to be sorted to prefer longer matches over shorter ones
+	// First sort by phrase length (longer first), then by position
+	phraseInfos.sort((a, b) => {
+		if (a.phrase.length !== b.phrase.length) {
+			return b.phrase.length - a.phrase.length;
+		}
+		return a.from - b.from;
+	});
 	return removeSubsetsAndIntersects(phraseInfos)
 }
 
 function removeSubsetsAndIntersects(phraseInfos: PhraseInfo[]): PhraseInfo[] {
-	let cursor = 0;
-	return phraseInfos.filter(phraseInfo => {
-		if (phraseInfo.from >= cursor) {
-			cursor = phraseInfo.to;
-			return true;
+	const finalResults: PhraseInfo[] = [];
+
+	for (const phraseInfo of phraseInfos) {
+		// Check if this phrase overlaps with any already accepted phrase
+		const hasOverlap = finalResults.some(existing =>
+			(phraseInfo.from < existing.to && phraseInfo.to > existing.from)
+		);
+
+		if (!hasOverlap) {
+			finalResults.push(phraseInfo);
 		}
-		return false;
-	});
+	}
+
+	// Sort final results by position for consistent output
+	return finalResults.sort((a, b) => a.from - b.from);
 }
 
 const pluginSpec: PluginSpec<DefinitionMarker> = {

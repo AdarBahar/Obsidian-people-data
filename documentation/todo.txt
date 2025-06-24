@@ -1,10 +1,14 @@
 Todo
-Send mentions to LLM to provide summary
 remove extra lines - extension
 add to config - reset buttons (colors, count, etc)
 make sure that security is implemented, and that there are no passwords or keys
+add to config - auto-refresh mention counts
+add to config - optimized search
+if https://www.make.md/ is installed - menus change
+    set as people folder is hiding under obsidian menus
+    no show for people tag on folder/pages
 
-
+    
 Done
 Utility CSV to markdown
 Check if a name is duplicated
