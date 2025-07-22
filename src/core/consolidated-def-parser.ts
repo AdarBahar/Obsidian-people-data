@@ -24,6 +24,7 @@ export class ConsolidatedDefParser extends BaseDefParser {
 	companyName: string;
 	companyLogo: string;
 	companyColor: string;
+	companyUrl: string;
 
 	currLine: number;
 
@@ -41,6 +42,7 @@ export class ConsolidatedDefParser extends BaseDefParser {
 		this.companyName = file.basename; // Extract company name from file name
 		this.companyLogo = "";
 		this.companyColor = "";
+		this.companyUrl = "";
 	}
 
 	async parseFile(fileContent?: string): Promise<PersonMetadata[]> {
@@ -56,6 +58,14 @@ export class ConsolidatedDefParser extends BaseDefParser {
 			const colorValue = fileMetadata.frontmatter.color;
 			if (typeof colorValue === 'string') {
 				this.companyColor = parseColorValue(colorValue);
+			}
+		}
+
+		if (fileMetadata?.frontmatter?.url) {
+			// Read company URL from frontmatter
+			const urlValue = fileMetadata.frontmatter.url;
+			if (typeof urlValue === 'string') {
+				this.companyUrl = urlValue;
 			}
 		}
 
@@ -158,6 +168,7 @@ export class ConsolidatedDefParser extends BaseDefParser {
 			companyName: this.companyName,
 			companyLogo: this.companyLogo,
 			companyColor: this.companyColor,
+			companyUrl: this.companyUrl,
 		};
 
 

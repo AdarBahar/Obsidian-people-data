@@ -33,6 +33,15 @@ export class AtomicDefParser extends BaseDefParser {
 			}
 		}
 
+		// Read company URL from frontmatter (properties)
+		let companyUrl = "";
+		if (fileMetadata?.frontmatter?.url) {
+			const urlValue = fileMetadata.frontmatter.url;
+			if (typeof urlValue === 'string') {
+				companyUrl = urlValue;
+			}
+		}
+
 		const fmPos = fileMetadata?.frontmatterPosition;
 		if (fmPos) {
 			fileContent = fileContent.slice(fmPos.end.offset+1);
@@ -85,6 +94,7 @@ export class AtomicDefParser extends BaseDefParser {
 			companyName,
 			companyLogo,
 			companyColor,
+			companyUrl,
 		};
 
 		return [personMetadata];

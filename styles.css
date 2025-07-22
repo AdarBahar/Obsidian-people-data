@@ -422,6 +422,50 @@
 	text-align: center;
 }
 
+/* Favicon Suggestion Styles */
+.company-config-favicon-suggestion {
+	margin: var(--size-2-2) 0;
+}
+
+.company-config-favicon-suggestion-content {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-2-2);
+	background-color: var(--background-primary-alt);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.company-config-favicon-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.company-config-favicon-preview {
+	width: 24px;
+	height: 24px;
+	object-fit: contain;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+}
+
+.company-config-favicon-use-btn {
+	padding: var(--size-1-1) var(--size-2-2);
+	font-size: var(--font-ui-small);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.company-config-favicon-use-btn:hover {
+	background-color: var(--interactive-hover);
+}
+
 /* Fade effect for scrollable content */
 .people-metadata-tab-content::after {
 	content: '';

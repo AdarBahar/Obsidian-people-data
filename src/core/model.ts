@@ -14,6 +14,7 @@ export interface PersonMetadata {
 	companyName?: string;
 	companyLogo?: string;
 	companyColor?: string;
+	companyUrl?: string;
 }
 
 export interface FilePosition {

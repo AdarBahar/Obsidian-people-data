@@ -32,6 +32,7 @@ export class CompanyManager {
 							name: companyName,
 							color: person.companyColor || undefined,
 							logo: person.companyLogo || undefined,
+							url: person.companyUrl || undefined,
 							file: person.file
 						});
 					}
