@@ -16,6 +16,8 @@ import { registerDefFile } from './editor/def-file-registration';
 import { DefFileType } from './core/file-type';
 import { PluginContext } from './core/plugin-context';
 import { DefinitionPreviewService } from './core/definition-preview-service';
+import { initCompanyManager, getCompanyManager } from './core/company-manager';
+import { CompanyConfigModal } from './editor/company-config-modal';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
@@ -43,6 +45,7 @@ export default class NoteDefinition extends Plugin {
 		initDefinitionModal(this.app);
 		this.defManager = initDefFileManager(this.app);
 		this.fileExplorerDeco = initFileExplorerDecoration(this.app);
+		initCompanyManager(this.app);
 		this.registerEditorExtension(this.activeEditorExtensions);
 		this.updateEditorExts();
 
@@ -89,6 +92,21 @@ export default class NoteDefinition extends Plugin {
 			callback: () => {
 				this.updateCompanyColors();
 				new Notice("Company colors updated");
+			}
+		});
+
+		this.addCommand({
+			id: "configure-companies",
+			name: "Configure companies",
+			callback: () => {
+				const companyManager = getCompanyManager();
+				const companies = companyManager.getAllCompanies();
+
+				const modal = new CompanyConfigModal(this.app, companies, async () => {
+					await this.refreshDefinitions();
+					new Notice("Company configurations updated!");
+				});
+				modal.open();
 			}
 		});
 	}

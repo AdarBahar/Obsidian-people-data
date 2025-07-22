@@ -1,6 +1,8 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, setTooltip } from "obsidian";
 import { DefFileType } from "./core/file-type";
 import { PluginContext } from "./core/plugin-context";
+import { CompanyConfigModal } from "./editor/company-config-modal";
+import { getCompanyManager } from "./core/company-manager";
 
 export enum PopoverEventSettings {
 	Hover = "hover",
@@ -184,6 +186,28 @@ export class SettingsTab extends PluginSettingTab {
 			});
 
 
+
+		new Setting(containerEl)
+			.setHeading()
+			.setName("Company settings");
+
+		new Setting(containerEl)
+			.setName("Configure companies")
+			.setDesc("Manage company colors, logos, and other settings")
+			.addButton(button => {
+				button.setButtonText("Open Company Configuration");
+				button.onClick(() => {
+					const companyManager = getCompanyManager();
+					const companies = companyManager.getAllCompanies();
+
+					const modal = new CompanyConfigModal(this.app, companies, async () => {
+						// Refresh definitions and update colors after saving
+						await (this.plugin as any).refreshDefinitions();
+						new Notice("Company configurations updated!");
+					});
+					modal.open();
+				});
+			});
 
 		new Setting(containerEl)
 			.setHeading()
