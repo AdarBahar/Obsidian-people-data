@@ -466,6 +466,211 @@
 	background-color: var(--interactive-hover);
 }
 
+/* New Simplified Company Configuration Styles */
+.company-config-item {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.company-config-item:last-child {
+	border-bottom: none;
+}
+
+.company-config-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--size-4-4);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.company-config-header:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.company-config-name-container {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+}
+
+.company-config-name {
+	margin: 0;
+	color: var(--text-accent);
+}
+
+.company-config-expand-icon {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	transition: transform 0.2s ease;
+}
+
+.company-config-expand-icon.open {
+	transform: rotate(0deg);
+}
+
+.company-config-expand-icon.closed {
+	transform: rotate(-90deg);
+}
+
+.company-config-settings {
+	overflow: hidden;
+	transition: max-height 0.3s ease;
+}
+
+.company-config-settings.closed {
+	max-height: 0;
+}
+
+.company-config-settings.open {
+	max-height: 1000px;
+}
+
+.company-config-section {
+	padding: var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border-focus);
+}
+
+.company-config-section:last-child {
+	border-bottom: none;
+}
+
+.company-config-section h4 {
+	margin: 0 0 var(--size-2-2) 0;
+	color: var(--text-normal);
+	font-weight: 600;
+}
+
+.company-config-radio-group {
+	display: flex;
+	gap: var(--size-4-4);
+	margin: var(--size-2-2) 0;
+}
+
+.company-config-radio-label {
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+	font-size: var(--font-ui-medium);
+}
+
+.company-config-input-container {
+	margin: var(--size-2-2) 0;
+}
+
+.company-config-input-container label {
+	display: block;
+	margin-bottom: var(--size-1-1);
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.company-config-input-container input,
+.company-config-input-container select {
+	width: 100%;
+	padding: var(--size-2-1);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.company-config-action-buttons {
+	display: flex;
+	gap: var(--size-2-2);
+	justify-content: flex-end;
+	margin-top: var(--size-2-2);
+}
+
+.company-config-save-btn,
+.company-config-cancel-btn {
+	padding: var(--size-2-1) var(--size-4-2);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+}
+
+.company-config-save-btn {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.company-config-cancel-btn {
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+}
+
+.company-config-logo-options {
+	display: flex;
+	gap: var(--size-2-2);
+	margin: var(--size-2-2) 0;
+}
+
+.company-config-logo-btn {
+	padding: var(--size-2-1) var(--size-4-2);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+}
+
+.company-config-logo-btn:hover {
+	background-color: var(--interactive-hover);
+}
+
+.company-config-favicon-section {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	margin: var(--size-2-2) 0;
+	padding: var(--size-2-2);
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+}
+
+.company-config-favicon-img {
+	width: 24px;
+	height: 24px;
+	object-fit: contain;
+	border-radius: var(--radius-s);
+}
+
+.company-config-favicon-use-btn {
+	padding: var(--size-1-1) var(--size-2-2);
+	font-size: var(--font-ui-small);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	cursor: pointer;
+}
+
+.company-config-logo-img {
+	max-width: 100px;
+	max-height: 60px;
+	object-fit: contain;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.company-config-logo-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+	text-align: center;
+	padding: var(--size-2-1);
+}
+
+.company-config-no-logo {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-style: italic;
+	text-align: center;
+}
+
 /* Fade effect for scrollable content */
 .people-metadata-tab-content::after {
 	content: '';
