@@ -671,6 +671,71 @@
 	text-align: center;
 }
 
+/* Color Preview Styles */
+.company-config-color-preview {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	margin: var(--size-2-2) 0;
+	padding: var(--size-2-2);
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.company-config-color-sample {
+	width: 24px;
+	height: 24px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.company-config-color-text {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+}
+
+.company-config-no-color {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+/* Logo Preview Improvements */
+.company-config-logo-sample {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+.company-config-logo-info {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-1-1);
+	margin-top: var(--size-2-1);
+}
+
+.company-config-logo-success {
+	color: var(--text-success);
+	font-size: var(--font-ui-small);
+}
+
+.company-config-logo-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-family: var(--font-monospace);
+	word-break: break-all;
+	text-align: center;
+	background-color: var(--background-primary-alt);
+	padding: var(--size-1-1) var(--size-2-1);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
 /* Fade effect for scrollable content */
 .people-metadata-tab-content::after {
 	content: '';

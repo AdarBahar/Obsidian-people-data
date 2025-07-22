@@ -216,13 +216,19 @@ export class CompanyConfigModal extends Modal {
 			state.currentConfig.color = hexTextInput.value;
 			state.hasUnsavedChanges = true;
 			this.updateActionButtons(container, company);
+			this.updateColorPreview(section, hexTextInput.value);
 		};
 
 		nameSelect.onchange = () => {
 			state.currentConfig.color = nameSelect.value;
 			state.hasUnsavedChanges = true;
 			this.updateActionButtons(container, company);
+			this.updateColorPreview(section, nameSelect.value);
 		};
+
+		// Add color preview container
+		section.createDiv({ cls: "company-config-color-preview" });
+		this.updateColorPreview(section, currentColor);
 	}
 
 	private createHomepageSection(container: HTMLElement, company: CompanyConfig) {
@@ -232,7 +238,7 @@ export class CompanyConfigModal extends Modal {
 		section.createEl("h4", { text: `${company.name} - Homepage` });
 
 		const inputContainer = section.createDiv({ cls: "company-config-input-container" });
-		inputContainer.createEl("label", { text: "Website (no need for https):" });
+		inputContainer.createEl("label", { text: "Homepage URLß" });
 
 		const urlInput = inputContainer.createEl("input", {
 			type: "text",
@@ -316,6 +322,34 @@ export class CompanyConfigModal extends Modal {
 		if (buttonContainer) {
 			buttonContainer.style.display = state.hasUnsavedChanges ? "flex" : "none";
 		}
+	}
+
+	private updateColorPreview(section: HTMLElement, colorValue: string) {
+		const previewDiv = section.querySelector(".company-config-color-preview") as HTMLElement;
+		if (!previewDiv) return;
+
+		previewDiv.empty();
+
+		if (!colorValue) {
+			previewDiv.createSpan({ text: "No color selected", cls: "company-config-no-color" });
+			return;
+		}
+
+		const parsedColor = parseColorValue(colorValue);
+		const preview = previewDiv.createDiv({ cls: "company-config-color-sample" });
+		preview.style.backgroundColor = parsedColor;
+		preview.style.border = `2px solid ${parsedColor}`;
+
+		// Show color name if it's a predefined color, otherwise show hex
+		const isColorName = getAvailableColorNames().includes(colorValue.toLowerCase());
+		const displayText = isColorName
+			? `${colorValue} (${parsedColor})`
+			: `${parsedColor}`;
+
+		previewDiv.createSpan({
+			text: displayText,
+			cls: "company-config-color-text"
+		});
 	}
 
 	private updateFaviconPreview(container: HTMLElement, url: string) {
@@ -419,16 +453,37 @@ export class CompanyConfigModal extends Modal {
 		const imageMatch = logoValue.match(/!\[.*?\]\(([^)]+)\)/);
 		if (imageMatch) {
 			const imagePath = imageMatch[1];
-			const img = container.createEl("img", {
+
+			// Create preview container
+			const previewContainer = container.createDiv({ cls: "company-config-logo-sample" });
+
+			const img = previewContainer.createEl("img", {
 				cls: "company-config-logo-img",
 				attr: { src: imagePath, alt: "Company Logo Preview" }
 			});
 
+			// Add load success handler
+			img.onload = () => {
+				// Show success indicator
+				const infoDiv = container.createDiv({ cls: "company-config-logo-info" });
+				infoDiv.createSpan({
+					text: "✅ Logo loaded successfully",
+					cls: "company-config-logo-success"
+				});
+			};
+
+			// Add error handling
 			img.onerror = () => {
-				container.empty();
-				container.createDiv({
+				previewContainer.empty();
+				previewContainer.createDiv({
 					cls: "company-config-logo-error",
 					text: "⚠️ Logo failed to load"
+				});
+
+				// Show the path that failed
+				previewContainer.createDiv({
+					cls: "company-config-logo-path",
+					text: `Path: ${imagePath}`
 				});
 			};
 		} else {
