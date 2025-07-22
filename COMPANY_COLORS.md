@@ -126,3 +126,88 @@ The interface shows colors like:
 - 🍃 mint
 
 This makes it easy to visually select and configure company colors without remembering hex codes!
+
+## Company Logos
+
+The plugin supports multiple logo sources for maximum flexibility:
+
+### Logo Types Supported
+
+#### 1. URL Logos (Internet)
+```yaml
+---
+def-type: consolidated
+color: "blue"
+---
+
+![Company Logo](https://example.com/logo.png)
+```
+
+#### 2. Local File Logos
+```yaml
+---
+def-type: consolidated
+color: "coral"
+---
+
+![Company Logo](assets/logos/company.png)
+```
+
+#### 3. No Logo
+```yaml
+---
+def-type: consolidated
+color: "mint"
+---
+```
+
+### Logo Configuration Interface
+
+The company configuration modal provides an easy way to set up logos:
+
+1. **🚫 No Logo** - No logo will be displayed
+2. **🌐 URL (Internet)** - Enter a full URL to an image online
+3. **📁 Local File** - Enter a path to a local image in your vault
+4. **✏️ Custom Markdown** - Enter custom markdown for advanced users
+
+### Logo Features
+
+✅ **Automatic fallback** - Shows company initials if logo fails to load
+✅ **Live preview** - See logo preview in configuration interface
+✅ **Error handling** - Clear feedback if logo fails to load
+✅ **Flexible formats** - Supports PNG, JPG, SVG, and other web formats
+✅ **Responsive sizing** - Logos automatically scale to fit interface
+
+### Examples
+
+#### Tech Company with URL Logo
+```markdown
+---
+def-type: consolidated
+color: "blue"
+---
+
+![TechCorp Logo](https://techcorp.com/assets/logo.png)
+
+# John Smith
+Position: Software Engineer
+Department: Engineering
+
+Notes about John...
+```
+
+#### Local Company with Local Logo
+```markdown
+---
+def-type: consolidated
+color: "forest"
+---
+
+![Local Business](assets/logos/local-business.png)
+
+# Jane Doe
+Position: Manager
+Department: Operations
+
+Notes about Jane...
+```

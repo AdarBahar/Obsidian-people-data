@@ -356,6 +356,72 @@
 	background-color: var(--interactive-accent-hover);
 }
 
+/* Logo Configuration Styles */
+.company-config-logo-preview {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	margin: var(--size-2-2) 0;
+	padding: var(--size-2-2);
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.company-config-logo-sample {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+.company-config-logo-img {
+	max-width: 100px;
+	max-height: 60px;
+	object-fit: contain;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+}
+
+.company-config-logo-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+	text-align: center;
+	padding: var(--size-2-1);
+}
+
+.company-config-logo-success {
+	color: var(--text-success);
+	font-size: var(--font-ui-small);
+}
+
+.company-config-logo-info {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-1-1);
+}
+
+.company-config-logo-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-family: var(--font-monospace);
+	word-break: break-all;
+	text-align: center;
+	background-color: var(--background-primary-alt);
+	padding: var(--size-1-1) var(--size-2-1);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.company-config-no-logo {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-style: italic;
+	text-align: center;
+}
+
 /* Fade effect for scrollable content */
 .people-metadata-tab-content::after {
 	content: '';
