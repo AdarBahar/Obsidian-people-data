@@ -3,6 +3,8 @@
 Augment names in your Obsidian pages with company, position and details.
 A personal tool for managing and looking up people metadata within your notes. Create company profiles, add person details, and get instant previews with company colors and logos.
 
+> **Latest Update**: Major code quality improvements addressing Obsidian team feedback - enhanced performance, better API compliance, and improved architecture.
+
 ![Person Tooltip Preview](./img/person-tooltip.png)
 
 ## 🚀 Installation
