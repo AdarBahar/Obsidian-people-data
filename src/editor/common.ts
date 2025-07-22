@@ -1,5 +1,5 @@
 import { Platform } from "obsidian";
-import { getSettings, PopoverEventSettings } from "src/settings";
+import { getSettings, PopoverEventSettings, PopoverDismissType } from "src/settings";
 import { DefinitionPreviewService } from "src/core/definition-preview-service";
 
 const previewService = DefinitionPreviewService.getInstance();
@@ -21,8 +21,12 @@ export function getDecorationAttrs(phrase: string, companyName?: string): { [key
 	if (settings.popoverEvent === PopoverEventSettings.Click) {
 		attributes.onclick = triggerFunc;
 	} else {
+		// Hover trigger
 		attributes.onmouseenter = triggerFunc;
-		attributes.onmouseleave = leaveFunc;
+		// Only add mouseleave if dismiss is set to mouse exit
+		if (settings.defPopoverConfig.popoverDismissEvent === PopoverDismissType.MouseExit) {
+			attributes.onmouseleave = leaveFunc;
+		}
 	}
 	if (!settings.enableSpellcheck) {
 		attributes.spellcheck = "false";

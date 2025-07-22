@@ -1,6 +1,6 @@
 import { getLinkpath, MarkdownPostProcessor } from "obsidian";
 import { getDefFileManager } from "src/core/def-file-manager";
-import { getSettings, PopoverEventSettings } from "src/settings";
+import { getSettings, PopoverEventSettings, PopoverDismissType } from "src/settings";
 import { DEF_DECORATION_CLS, getDecorationAttrs } from "./common";
 import { getDefinitionPopover } from "./definition-popover";
 import { LineScanner, PhraseInfo } from "./definition-search";
@@ -90,9 +90,10 @@ function getNormalDecorationSpan(container: HTMLElement, phraseInfo: PhraseInfo,
 		text: currText.slice(phraseInfo.from, phraseInfo.to),
 	});
 	
-	// Add mouse leave listener for hover popover behavior
+	// Add mouse leave listener only if hover trigger with mouse exit dismiss
 	const settings = getSettings();
-	if (settings.popoverEvent !== PopoverEventSettings.Click) {
+	if (settings.popoverEvent === PopoverEventSettings.Hover &&
+		settings.defPopoverConfig.popoverDismissEvent === PopoverDismissType.MouseExit) {
 		const previewService = DefinitionPreviewService.getInstance();
 		span.addEventListener("mouseleave", () => {
 			previewService.closeDefPreview();

@@ -2,6 +2,7 @@ import { Platform } from "obsidian";
 import { getDefFileManager } from "./def-file-manager";
 import { getDefinitionPopover } from "../editor/definition-popover";
 import { getDefinitionModal } from "../editor/mobile/definition-modal";
+import { getSettings, PopoverEventSettings } from "../settings";
 
 /**
  * Service for handling definition previews.
@@ -30,6 +31,8 @@ export class DefinitionPreviewService {
 		const allMatches = defManager.getAll(word);
 		if (!allMatches || allMatches.length === 0) return;
 
+		const settings = getSettings();
+
 		if (Platform.isMobile) {
 			const defModal = getDefinitionModal();
 			if (allMatches.length === 1) {
@@ -41,6 +44,17 @@ export class DefinitionPreviewService {
 		}
 
 		const defPopover = getDefinitionPopover();
+
+		// For click trigger, check if popover is already open and toggle
+		if (settings.popoverEvent === PopoverEventSettings.Click) {
+			const existingPopover = defPopover.getPopoverElement();
+			if (existingPopover) {
+				// Popover is open, close it
+				defPopover.close();
+				return;
+			}
+		}
+
 		const rect = el.getBoundingClientRect();
 		const coords = {
 			left: rect.left,

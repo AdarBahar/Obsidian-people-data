@@ -1,7 +1,7 @@
 import { App, Component, MarkdownRenderer, MarkdownView, normalizePath, Plugin } from "obsidian";
 import { PersonMetadata } from "src/core/model";
 // import { Definition } from "src/core/model"; // Removed as it's no longer used
-import { getSettings, PopoverDismissType } from "src/settings";
+import { getSettings, PopoverDismissType, PopoverEventSettings } from "src/settings";
 import { logError } from "src/util/log";
 
 const DEF_POPOVER_ID = "definition-popover";
@@ -92,7 +92,21 @@ export class DefinitionPopover extends Component {
 		this.unmount();
 	}
 
-	clickClose = () => {
+	clickClose = (event: Event) => {
+		const settings = getSettings();
+
+		// For click trigger mode, check if clicking on the same element that triggered the popover
+		if (settings.popoverEvent === PopoverEventSettings.Click) {
+			const target = event.target as HTMLElement;
+			const defElement = target.closest('.people-metadata-def-decoration');
+
+			// If clicking on a person name element, let the trigger handle it (toggle behavior)
+			if (defElement) {
+				return;
+			}
+		}
+
+		// For hover trigger with click dismiss, or click outside in click trigger mode
 		if (this.mountedPopover?.matches(":hover")) {
 			return;
 		}
@@ -508,9 +522,11 @@ export class DefinitionPopover extends Component {
 	}
 
 	private registerClosePopoverListeners() {
+		const settings = getSettings();
+
+		// Always close on keypress and scroll
 		this.getActiveView()?.containerEl.addEventListener("keypress", this.close);
-		this.getActiveView()?.containerEl.addEventListener("click", this.clickClose);
-		
+
 		if (this.cmEditor && typeof this.cmEditor === 'object' && this.cmEditor !== null && 'on' in this.cmEditor) {
 			(this.cmEditor as { on: (event: string, callback: () => void) => void }).on("vim-keypress", this.close);
 		}
@@ -518,9 +534,21 @@ export class DefinitionPopover extends Component {
 		if (scroller) {
 			scroller.addEventListener("scroll", this.close);
 		}
+
+		// Handle click events based on trigger and dismiss settings
+		if (settings.popoverEvent === PopoverEventSettings.Click) {
+			// Click trigger: click again to dismiss
+			this.getActiveView()?.containerEl.addEventListener("click", this.clickClose);
+		} else if (settings.popoverEvent === PopoverEventSettings.Hover &&
+				   settings.defPopoverConfig.popoverDismissEvent === PopoverDismissType.Click) {
+			// Hover trigger with click dismiss: click anywhere to dismiss
+			this.getActiveView()?.containerEl.addEventListener("click", this.clickClose);
+		}
+		// Note: Mouse exit dismiss is handled in the span elements themselves
 	}
 
 	private unregisterClosePopoverListeners() {
+		// Remove all possible listeners
 		this.getActiveView()?.containerEl.removeEventListener("keypress", this.close);
 		this.getActiveView()?.containerEl.removeEventListener("click", this.clickClose);
 
