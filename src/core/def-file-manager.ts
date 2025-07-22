@@ -200,6 +200,11 @@ export class DefManager {
 		return this.getDefRepo().get(normaliseWord(key));
 	}
 
+	// Get all matches for a person across all companies
+	getAll(key: string): PersonMetadata[] {
+		return this.getDefRepo().getAll(key);
+	}
+
 	getPersonCompany(key: string): string | undefined {
 		const person = this.get(key);
 		return person?.companyName;
@@ -344,6 +349,21 @@ export class DefinitionRepo {
 				return def;
 			}
 		}
+	}
+
+	// Get all matches for a person across all companies
+	getAll(key: string): PersonMetadata[] {
+		const matches: PersonMetadata[] = [];
+		const normalizedKey = normaliseWord(key);
+
+		for (let [_, defMap] of this.fileDefMap) {
+			const def = defMap.get(normalizedKey);
+			if (def) {
+				matches.push(def);
+			}
+		}
+
+		return matches;
 	}
 
 	getAllKeys(): string[] {

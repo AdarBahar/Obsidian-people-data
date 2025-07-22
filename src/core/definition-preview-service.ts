@@ -26,17 +26,34 @@ export class DefinitionPreviewService {
 		const word = el.getAttr('def');
 		if (!word) return;
 
-		const def = getDefFileManager().get(word);
-		if (!def) return;
+		const defManager = getDefFileManager();
+		const allMatches = defManager.getAll(word);
+		if (!allMatches || allMatches.length === 0) return;
 
 		if (Platform.isMobile) {
 			const defModal = getDefinitionModal();
-			defModal.open(def);
+			if (allMatches.length === 1) {
+				defModal.open(allMatches[0]);
+			} else {
+				defModal.openMultiple(allMatches);
+			}
 			return;
 		}
 
 		const defPopover = getDefinitionPopover();
-		defPopover.openAtCoords(def, el.getBoundingClientRect());
+		const rect = el.getBoundingClientRect();
+		const coords = {
+			left: rect.left,
+			right: rect.right,
+			top: rect.top,
+			bottom: rect.bottom
+		};
+
+		if (allMatches.length === 1) {
+			defPopover.openAtCoords(allMatches[0], coords);
+		} else {
+			defPopover.openMultipleAtCoords(allMatches, coords);
+		}
 	}
 
 	/**

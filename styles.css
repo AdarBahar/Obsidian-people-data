@@ -11,6 +11,12 @@
 	overflow: auto;
 }
 
+/* Multi-company popover adjustments */
+.people-metadata-multi-company-popover {
+	min-width: 600px;
+	max-width: 700px;
+}
+
 .people-metadata-definition-popover.is-hidden {
 	visibility: hidden;
 }
@@ -149,4 +155,68 @@
 	font-size: var(--font-ui-medium);
 	float: right;
 	background-color: var(--interactive-normal);
+}
+
+/* Multi-company tabs styling */
+.people-metadata-tabs-container {
+	margin-top: var(--size-4-2);
+}
+
+.people-metadata-tabs-header {
+	display: flex;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: var(--size-4-2);
+	gap: 2px;
+}
+
+.people-metadata-tab-button {
+	padding: var(--size-2-2) var(--size-4-2);
+	background-color: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-bottom: none;
+	border-radius: var(--radius-s) var(--radius-s) 0 0;
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	color: var(--text-muted);
+	transition: all 0.2s ease;
+	user-select: none;
+	white-space: nowrap;
+	min-width: 80px;
+	text-align: center;
+}
+
+.people-metadata-tab-button:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.people-metadata-tab-button.active {
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	font-weight: 600;
+	border-bottom: 1px solid var(--background-secondary);
+	margin-bottom: -1px;
+}
+
+.people-metadata-tabs-content {
+	position: relative;
+}
+
+.people-metadata-tab-content {
+	display: none;
+}
+
+.people-metadata-tab-content.active {
+	display: block;
+}
+
+/* Mobile-specific tab adjustments */
+.modal .people-metadata-tabs-header {
+	flex-wrap: wrap;
+}
+
+.modal .people-metadata-tab-button {
+	flex: 1;
+	min-width: 100px;
 }

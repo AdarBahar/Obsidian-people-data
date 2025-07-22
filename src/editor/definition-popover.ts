@@ -44,6 +44,19 @@ export class DefinitionPopover extends Component {
 		this.registerClosePopoverListeners();
 	}
 
+	// Open multiple companies at cursor position
+	openMultipleAtCursor(people: PersonMetadata[]) {
+		this.unmount();
+		this.mountMultipleAtCursor(people);
+
+		if (!this.mountedPopover) {
+			logError("Mounting multi-company person popover failed");
+			return
+		}
+
+		this.registerClosePopoverListeners();
+	}
+
 	// Open at coordinates (can use for opening at mouse position)
 	openAtCoords(person: PersonMetadata, coords: Coordinates) {
 		this.unmount();
@@ -51,6 +64,18 @@ export class DefinitionPopover extends Component {
 
 		if (!this.mountedPopover) {
 			logError("mounting person popover failed");
+			return
+		}
+		this.registerClosePopoverListeners();
+	}
+
+	// Open multiple companies at specific coordinates
+	openMultipleAtCoords(people: PersonMetadata[], coords: Coordinates) {
+		this.unmount();
+		this.mountMultipleAtCoordinates(people, coords);
+
+		if (!this.mountedPopover) {
+			logError("mounting multi-company person popover failed");
 			return
 		}
 		this.registerClosePopoverListeners();
@@ -171,6 +196,123 @@ export class DefinitionPopover extends Component {
 		return el;
 	}
 
+	// Creates multi-company popover element with tabs
+	private createMultiCompanyElement(people: PersonMetadata[], parent: HTMLElement): HTMLDivElement {
+		const popoverSettings = getSettings().defPopoverConfig;
+
+		// Build CSS classes
+		let cssClasses = "people-metadata-definition-popover people-metadata-multi-company-popover is-hidden";
+		if (popoverSettings.backgroundColour) {
+			cssClasses += " has-custom-background";
+		}
+
+		const el = parent.createDiv({
+			cls: cssClasses,
+			attr: {
+				id: DEF_POPOVER_ID,
+			},
+		});
+
+		// Set custom background color as CSS variable if provided
+		if (popoverSettings.backgroundColour) {
+			el.style.setProperty('--custom-popover-background', popoverSettings.backgroundColour);
+		}
+
+		// Create header with person name (same across all companies)
+		const headerEl = el.createDiv({ cls: "people-metadata-popover-header" });
+		const personNameEl = headerEl.createEl("h2", {
+			cls: "people-metadata-person-name",
+			text: people[0].fullName
+		});
+
+		// Create tabs container
+		const tabsContainer = el.createDiv({ cls: "people-metadata-tabs-container" });
+		const tabsHeader = tabsContainer.createDiv({ cls: "people-metadata-tabs-header" });
+		const tabsContent = tabsContainer.createDiv({ cls: "people-metadata-tabs-content" });
+
+		// Create tabs for each company
+		people.forEach((person, index) => {
+			// Create tab button
+			const tabButton = tabsHeader.createDiv({
+				cls: `people-metadata-tab-button ${index === 0 ? 'active' : ''}`,
+				text: person.companyName || 'Unknown Company',
+				attr: {
+					'data-tab-index': index.toString()
+				}
+			});
+
+			// Create tab content
+			const tabContent = tabsContent.createDiv({
+				cls: `people-metadata-tab-content ${index === 0 ? 'active' : ''}`,
+				attr: {
+					'data-tab-index': index.toString()
+				}
+			});
+
+			// Add company info to tab content
+			if (person.companyName || person.companyLogo) {
+				const companyEl = tabContent.createDiv({ cls: "people-metadata-company-info" });
+				if (person.companyLogo) {
+					const logoEl = companyEl.createDiv({ cls: "people-metadata-company-logo" });
+					this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
+				}
+				if (person.companyName) {
+					companyEl.createDiv({ text: person.companyName, cls: "people-metadata-company-name" });
+				}
+			}
+
+			// Add filename display if enabled
+			if (popoverSettings.displayDefFileName) {
+				const filenameEl = tabContent.createDiv({
+					text: person.file.basename,
+					cls: "people-metadata-definition-popover-filename"
+				});
+			}
+
+			// Person details
+			const detailsEl = tabContent.createDiv({ cls: "people-metadata-person-details" });
+			if (person.position) {
+				detailsEl.createDiv({ text: `Position: ${person.position}` });
+			}
+			if (person.department) {
+				detailsEl.createDiv({ text: `Department: ${person.department}` });
+			}
+
+			// Notes content
+			const contentEl = tabContent.createDiv({ cls: "people-metadata-person-notes" });
+			contentEl.setAttr("ctx", "person-popup");
+
+			const currComponent = this;
+			MarkdownRenderer.render(this.app, person.notes, contentEl,
+				normalizePath(person.file.path), currComponent);
+			this.postprocessMarkdown(contentEl, person);
+
+			// Add click handler for tab switching
+			tabButton.addEventListener('click', () => {
+				this.switchTab(tabsContainer, index);
+			});
+		});
+
+		return el;
+	}
+
+	// Switch active tab in multi-company popover
+	private switchTab(tabsContainer: HTMLElement, activeIndex: number) {
+		// Remove active class from all tabs and content
+		const tabButtons = tabsContainer.querySelectorAll('.people-metadata-tab-button');
+		const tabContents = tabsContainer.querySelectorAll('.people-metadata-tab-content');
+
+		tabButtons.forEach(button => button.removeClass('active'));
+		tabContents.forEach(content => content.removeClass('active'));
+
+		// Add active class to selected tab and content
+		const activeButton = tabsContainer.querySelector(`[data-tab-index="${activeIndex}"]`);
+		const activeContent = tabsContainer.querySelector(`.people-metadata-tab-content[data-tab-index="${activeIndex}"]`);
+
+		if (activeButton) activeButton.addClass('active');
+		if (activeContent) activeContent.addClass('active');
+	}
+
 	private renderCompanyLogoWithFallback(logoMarkdown: string, logoEl: HTMLElement, person: PersonMetadata) {
 		// First try to render the original logo
 		MarkdownRenderer.render(this.app, logoMarkdown, logoEl,
@@ -240,6 +382,18 @@ export class DefinitionPopover extends Component {
 		this.mountAtCoordinates(person, cursorCoords);
 	}
 
+	private mountMultipleAtCursor(people: PersonMetadata[]) {
+		let cursorCoords;
+		try {
+			cursorCoords = this.getCursorCoords();
+		} catch (e) {
+			logError("Could not open multi-company person popover - could not get cursor coordinates");
+			return
+		}
+
+		this.mountMultipleAtCoordinates(people, cursorCoords);
+	}
+
 	// Offset coordinates from viewport coordinates to coordinates relative to the parent container element
 	private offsetCoordsToContainer(coords: Coordinates, container: HTMLElement): Coordinates {
 		const containerRect = container.getBoundingClientRect();
@@ -259,6 +413,17 @@ export class DefinitionPopover extends Component {
 		}
 
 		this.mountedPopover = this.createElement(person, mdView.containerEl);
+		this.positionAndSizePopover(mdView, coords);
+	}
+
+	private mountMultipleAtCoordinates(people: PersonMetadata[], coords: Coordinates) {
+		const mdView = this.app.workspace.getActiveViewOfType(MarkdownView)
+		if (!mdView) {
+			logError("Could not mount multi-company popover: No active markdown view found");
+			return;
+		}
+
+		this.mountedPopover = this.createMultiCompanyElement(people, mdView.containerEl);
 		this.positionAndSizePopover(mdView, coords);
 	}
 
