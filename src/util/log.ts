@@ -1,4 +1,5 @@
 // Rudimentary logger implementation
+import { PluginContext } from "../core/plugin-context";
 
 export enum LogLevel {
 	Silent,
@@ -18,7 +19,13 @@ const levelMap = {
 
 // Log only if current log level is >= specified log level
 function logWithLevel(msg: string, logLevel: LogLevel) {
-	if (window.NoteDefinition.LOG_LEVEL >= logLevel) {
+	try {
+		const context = PluginContext.getInstance();
+		if (context.logLevel >= logLevel) {
+			console.log(`${levelMap[logLevel]}: ${msg}`);
+		}
+	} catch (e) {
+		// Fallback if context is not initialized
 		console.log(`${levelMap[logLevel]}: ${msg}`);
 	}
 }

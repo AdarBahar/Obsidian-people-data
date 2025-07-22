@@ -1,5 +1,4 @@
 import { Menu, Notice, Plugin, TFolder, WorkspaceWindow, TFile, MarkdownView } from 'obsidian';
-import { injectGlobals } from './globals';
 import { definitionMarker } from './editor/decoration';
 import { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -7,7 +6,7 @@ import { DefManager, initDefFileManager } from './core/def-file-manager';
 import { PersonMetadata } from './core/model';
 import { getDefinitionPopover, initDefinitionPopover } from './editor/definition-popover';
 import { postProcessor } from './editor/md-postprocessor';
-import { DEFAULT_SETTINGS, getSettings, SettingsTab } from './settings';
+import { DEFAULT_SETTINGS, SettingsTab, getSettings } from './settings';
 import { getMarkedWordUnderCursor } from './util/editor';
 import { FileExplorerDecoration, initFileExplorerDecoration } from './ui/file-explorer';
 import { EditDefinitionModal } from './editor/edit-modal';
@@ -15,21 +14,28 @@ import { AddDefinitionModal } from './editor/add-modal';
 import { initDefinitionModal } from './editor/mobile/definition-modal';
 import { registerDefFile } from './editor/def-file-registration';
 import { DefFileType } from './core/file-type';
+import { PluginContext } from './core/plugin-context';
+import { DefinitionPreviewService } from './core/definition-preview-service';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
 	defManager: DefManager;
 	fileExplorerDeco: FileExplorerDecoration;
 	dynamicStylesEl: HTMLStyleElement;
+	context: PluginContext;
+	previewService: DefinitionPreviewService;
 
 	async onload() {
-		// Settings are injected into global object
+		// Initialize plugin context instead of global variables
 		const settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
-		injectGlobals(settings, this.app, window);
+		this.context = PluginContext.initialize(this.app, this, settings);
+		this.previewService = DefinitionPreviewService.getInstance();
 
-		this.registerEvent(this.app.workspace.on('window-open', (_win: WorkspaceWindow, newWindow: Window) => {
-			injectGlobals(settings, this.app, newWindow);
-		}))
+		// Expose minimal interface for HTML event handlers
+		(window as any).peopleMetadataPlugin = {
+			triggerDefPreview: (el: HTMLElement) => this.previewService.triggerDefPreview(el),
+			closeDefPreview: () => this.previewService.closeDefPreview(),
+		};
 
 
 
@@ -51,15 +57,16 @@ export default class NoteDefinition extends Plugin {
 	}
 
 	async saveSettings() {
-		await this.saveData(window.NoteDefinition.settings);
+		await this.saveData(this.context.settings);
+		this.context.updateSettings(this.context.settings);
 		this.fileExplorerDeco.run();
-		this.refreshDefinitions();
+		await this.refreshDefinitions();
 	}
 
 	registerCommands() {
 		this.addCommand({
 			id: "add-definition",
-			name: "Add a Person",
+			name: "Add a person",
 			editorCallback: (editor) => {
 				const selectedText = editor.getSelection();
 				const addModal = new AddDefinitionModal(this.app);
@@ -107,7 +114,7 @@ export default class NoteDefinition extends Plugin {
 			if (!curWord) {
 				if (editor.getSelection()) {
 					menu.addItem(item => {
-						item.setTitle("Add a Person")
+						item.setTitle("Add a person")
 						item.setIcon("plus")
 						.onClick(() => {
 								const addModal = new AddDefinitionModal(this.app);
@@ -145,7 +152,7 @@ export default class NoteDefinition extends Plugin {
 			if (file.path.startsWith(settings.defFolder) && file instanceof TFile && file.extension === 'md') {
 				if (settings.autoRegisterNewFiles) {
 					// Automatically register new markdown files in the people folder as consolidated people files
-					setTimeout(() => {
+					window.setTimeout(() => {
 						this.autoRegisterNewDefFile(file);
 					}, 100); // Small delay to ensure file is fully created
 				} else {
@@ -202,16 +209,16 @@ export default class NoteDefinition extends Plugin {
 		});
 	}
 
-	refreshDefinitions() {
-		this.defManager.loadDefinitions();
+	async refreshDefinitions() {
+		await this.defManager.loadDefinitions();
 		// Update company colors after loading people
-		setTimeout(() => this.updateCompanyColors(), 100);
+		window.setTimeout(() => this.updateCompanyColors(), 100);
 	}
 
 	reloadUpdatedDefinitions() {
 		this.defManager.loadUpdatedFiles();
 		// Update company colors after loading updated people
-		setTimeout(() => this.updateCompanyColors(), 100);
+		window.setTimeout(() => this.updateCompanyColors(), 100);
 	}
 
 	async autoRegisterNewDefFile(file: TFile) {
@@ -223,12 +230,17 @@ export default class NoteDefinition extends Plugin {
 			// If file already has def-type frontmatter, don't modify it
 			if (fileMetadata?.frontmatter?.['def-type']) {
 				this.fileExplorerDeco.run();
-				this.refreshDefinitions();
+				await this.refreshDefinitions();
 				return;
 			}
 
 			// If file is empty or only has whitespace, add frontmatter and basic template
-			const contentWithoutFrontmatter = fileContent.replace(/^---[\s\S]*?---\n?/, '').trim();
+			let contentWithoutFrontmatter = fileContent;
+			const fmPos = fileMetadata?.frontmatterPosition;
+			if (fmPos) {
+				contentWithoutFrontmatter = fileContent.slice(fmPos.end.offset + 1);
+			}
+			contentWithoutFrontmatter = contentWithoutFrontmatter.trim();
 
 			if (contentWithoutFrontmatter.length === 0) {
 				// File is empty, add full template
@@ -240,7 +252,7 @@ export default class NoteDefinition extends Plugin {
 
 			// Update UI and refresh people
 			this.fileExplorerDeco.run();
-			this.refreshDefinitions();
+			await this.refreshDefinitions();
 
 			new Notice(`Auto-registered ${file.basename} as a People file`);
 		} catch (error) {
@@ -267,7 +279,12 @@ export default class NoteDefinition extends Plugin {
 			const fileMetadata = this.app.metadataCache.getFileCache(activeFile);
 
 			// Check if file is essentially empty (no content or only whitespace)
-			const contentWithoutFrontmatter = fileContent.replace(/^---[\s\S]*?---\n?/, '').trim();
+			let contentWithoutFrontmatter = fileContent;
+			const fmPos = fileMetadata?.frontmatterPosition;
+			if (fmPos) {
+				contentWithoutFrontmatter = fileContent.slice(fmPos.end.offset + 1);
+			}
+			contentWithoutFrontmatter = contentWithoutFrontmatter.trim();
 			const hasDefType = fileMetadata?.frontmatter?.['def-type'];
 
 			// If file is empty and doesn't have def-type, add template
@@ -277,16 +294,16 @@ export default class NoteDefinition extends Plugin {
 
 				// Update UI and refresh people
 				this.fileExplorerDeco.run();
-				this.refreshDefinitions();
+				await this.refreshDefinitions();
 			}
 			// If file has content but no def-type, just add frontmatter
 			else if (!hasDefType && contentWithoutFrontmatter.length > 0) {
-				registerDefFile(this.app, activeFile, DefFileType.Consolidated);
+				await registerDefFile(this.app, activeFile, DefFileType.Consolidated);
 				new Notice(`Registered ${activeFile.basename} as People file`);
 
 				// Update UI and refresh people
 				this.fileExplorerDeco.run();
-				this.refreshDefinitions();
+				await this.refreshDefinitions();
 			}
 		} catch (error) {
 			console.error(`Failed to check/add template for ${activeFile.path}:`, error);
@@ -320,7 +337,7 @@ Notes about the second person.
 ---
 `;
 
-		await this.app.vault.modify(file, template);
+		await this.app.vault.process(file, () => template);
 	}
 
 	updateEditorExts() {
@@ -341,9 +358,11 @@ Notes about the second person.
 
 	initDynamicStyles() {
 		// Create a style element for dynamic company colors
-		this.dynamicStylesEl = document.createElement('style');
-		this.dynamicStylesEl.setAttribute('data-plugin', 'people-metadata');
-		document.head.appendChild(this.dynamicStylesEl);
+		this.dynamicStylesEl = document.head.createEl('style', {
+			attr: {
+				'data-plugin': 'people-metadata'
+			}
+		});
 		this.updateCompanyColors();
 	}
 
@@ -371,7 +390,7 @@ Notes about the second person.
 		for (const [companyName, color] of companies) {
 			const safeName = companyName.replace(/[^a-zA-Z0-9-_]/g, '-');
 			cssRules += `
-.def-decoration[data-company="${safeName}"] {
+.people-metadata-def-decoration[data-company="${safeName}"] {
 	--person-underline-color: ${color} !important;
 }
 `;
@@ -387,5 +406,12 @@ Notes about the second person.
 		if (this.dynamicStylesEl) {
 			this.dynamicStylesEl.remove();
 		}
+
+		// Clean up context and services
+		PluginContext.cleanup();
+		DefinitionPreviewService.cleanup();
+
+		// Clean up global interface
+		delete (window as any).peopleMetadataPlugin;
 	}
 }

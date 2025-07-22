@@ -29,7 +29,7 @@ export class DefFileUpdater {
 	}
 
 	private async updateAtomicMetadataFile(metadata: PersonMetadata) {
-		await this.app.vault.modify(metadata.file, metadata.notes);
+		await this.app.vault.process(metadata.file, () => metadata.notes);
 	}
 
 	private async updateConsolidatedMetadataFile(metadata: PersonMetadata) {
@@ -51,7 +51,7 @@ export class DefFileUpdater {
 			const newLines = this.replaceMetadata(fileMetadata.filePosition, metadata, lines);
 			const newContent = newLines.join("\n");
 
-			await this.app.vault.modify(file, newContent);
+			await this.app.vault.process(file, () => newContent);
 		}
 	}
 
@@ -103,7 +103,7 @@ export class DefFileUpdater {
 		const newLines = lines.concat(addedLines);
 		const newContent = newLines.join("\n");
 
-		await this.app.vault.modify(file, newContent);
+		await this.app.vault.process(file, () => newContent);
 	}
 
 	private addSeparator(lines: string[]) {

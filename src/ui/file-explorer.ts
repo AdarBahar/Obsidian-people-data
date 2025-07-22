@@ -7,7 +7,12 @@ let fileExplorerDecoration: FileExplorerDecoration;
 
 const MAX_RETRY = 3;
 const RETRY_INTERVAL = 1000;
-const DIV_ID = "def-tag-id";
+const TAG_CLASS = "people-metadata-file-tag";
+const TAG_DATA_ATTR = "data-people-metadata-tag";
+
+function sleep(ms: number): Promise<void> {
+	return new Promise(resolve => window.setTimeout(resolve, ms));
+}
 
 export class FileExplorerDecoration {
 	app: App;
@@ -21,48 +26,77 @@ export class FileExplorerDecoration {
 	async run() {
 		this.retryCount = 0;
 
-		// Retry required as some views may not be loaded on initial app start
+		// Handle deferred views properly - retry until view is available
+		// Views in Obsidian can be deferred (not immediately loaded) especially during startup
+		// We need to check if the view exists and is fully loaded before accessing its properties
 		while (this.retryCount < MAX_RETRY) {
 			try {
-				this.exec();
+				const success = this.exec();
+				if (success) {
+					return;
+				}
 			} catch (e) {
 				logError(e);
-				this.retryCount++;
-				await sleep(RETRY_INTERVAL);
-				continue;
 			}
-			return;
+
+			this.retryCount++;
+			await sleep(RETRY_INTERVAL);
 		}
+
+		logError("Failed to access file explorer view after maximum retries");
 	}
 
-	private exec() {
-		const fileExplorer = this.app.workspace.getLeavesOfType('file-explorer')[0];
+	private exec(): boolean {
+		// Check if workspace is ready
+		if (!this.app.workspace) {
+			return false;
+		}
+
+		// Get file explorer leaves
+		const fileExplorerLeaves = this.app.workspace.getLeavesOfType('file-explorer');
+
+		// Check if file explorer view exists
+		if (fileExplorerLeaves.length === 0) {
+			return false;
+		}
+
+		const fileExplorer = fileExplorerLeaves[0];
+
+		// Check if the view is loaded (not deferred)
+		if (!fileExplorer.view) {
+			return false;
+		}
+
 		const fileExpView = fileExplorer.view as FileExplorerView;
 
+		// Check if the view has the required properties
+		if (!fileExpView.fileItems) {
+			return false;
+		}
+
 		const settings = getSettings();
+		const defFolder = settings.defFolder || DEFAULT_DEF_FOLDER;
+
+		// If def folder is an invalid folder path, then do not add any tags
+		if (!fileExpView.fileItems[defFolder]) {
+			return true; // Still consider this successful, just no tagging needed
+		}
+
 		Object.keys(fileExpView.fileItems).forEach(k => {
 			const fileItem = fileExpView.fileItems[k];
 
 			// Clear previously added ones (if exist)
-			const fileTags = fileItem.selfEl.getElementsByClassName("nav-file-tag");
-			for (let i = 0; i < fileTags.length; i++) {
-				const fileTag = fileTags[i];
-				if (fileTag.id === DIV_ID) {
-					fileTag.remove();
-				}
-			}
-
-			const defFolder = settings.defFolder || DEFAULT_DEF_FOLDER;
-
-			// If def folder is an invalid folder path, then do not add any tags
-			if (!fileExpView.fileItems[defFolder]) {
-				return;
-			}
+			const fileTags = fileItem.selfEl.querySelectorAll(`[${TAG_DATA_ATTR}]`);
+			fileTags.forEach(fileTag => {
+				fileTag.remove();
+			});
 
 			if (k.startsWith(defFolder)) {
 				this.tagFile(fileExpView, k, "PEOPLE");
 			}
 		});
+
+		return true; // Successfully completed
 	}
 
 	private tagFile(explorer: FileExplorerView, filePath: string, tagContent: string) {
@@ -71,17 +105,17 @@ export class FileExplorerDecoration {
 			return;
 		}
 
-		const fileTags = el.selfEl.getElementsByClassName("nav-file-tag");
-		for (let i = 0; i < fileTags.length; i++) {
-			const fileTag = fileTags[i];
-			fileTag.remove();
-		}
+		// Remove any existing people metadata tags
+		const existingTags = el.selfEl.querySelectorAll(`[${TAG_DATA_ATTR}]`);
+		existingTags.forEach(tag => {
+			tag.remove();
+		});
 
 		el.selfEl.createDiv({
-			cls: "nav-file-tag",
+			cls: `nav-file-tag ${TAG_CLASS}`,
 			text: tagContent,
 			attr: {
-				id: DIV_ID
+				[TAG_DATA_ATTR]: "true"
 			}
 		})
 	}

@@ -24,7 +24,7 @@ export class EditDefinitionModal {
 		const defText = this.modal.contentEl.createEl('textarea', { text: def.notes });
 		const button = this.modal.contentEl.createEl("button", {
 			text: "Save",
-			cls: 'edit-modal-save-button',
+			cls: 'people-metadata-edit-modal-save-button',
 		});
 		button.addEventListener('click', () => {
 			if (this.submitting) {

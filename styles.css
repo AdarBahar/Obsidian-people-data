@@ -1,4 +1,4 @@
-.definition-popover {
+.people-metadata-definition-popover {
 	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border-hover);
 	border-radius: var(--radius-m);
@@ -11,7 +11,15 @@
 	overflow: auto;
 }
 
-.popover-header, .modal-header {
+.people-metadata-definition-popover.is-hidden {
+	visibility: hidden;
+}
+
+.people-metadata-definition-popover.has-custom-background {
+	background-color: var(--custom-popover-background);
+}
+
+.people-metadata-popover-header, .people-metadata-modal-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -20,7 +28,7 @@
 	min-height: 32px;
 }
 
-.person-name {
+.people-metadata-person-name {
 	margin: 0;
 	flex: 1;
 	font-size: var(--font-ui-large);
@@ -31,7 +39,7 @@
 	min-width: 0;
 }
 
-.company-info {
+.people-metadata-company-info {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
@@ -40,16 +48,16 @@
 	flex-shrink: 0;
 }
 
-.company-logo {
+.people-metadata-company-logo {
 	order: 2;
 }
 
-.company-logo img {
+.people-metadata-company-logo img {
 	max-height: 32px;
 	max-width: 64px;
 }
 
-.company-logo-default {
+.people-metadata-company-logo-default {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -64,7 +72,7 @@
 	line-height: 1;
 }
 
-.company-name {
+.people-metadata-company-name {
 	order: 1;
 	font-size: var(--font-ui-medium);
 	color: var(--text-normal);
@@ -73,31 +81,31 @@
 	white-space: nowrap;
 }
 
-.person-details {
+.people-metadata-person-details {
 	margin-bottom: var(--size-4-2);
 }
 
-.person-details > div {
+.people-metadata-person-details > div {
 	margin-bottom: var(--size-2-1);
 }
 
-.person-details > div:last-child {
+.people-metadata-person-details > div:last-child {
 	margin-bottom: 0;
 }
 
-.person-notes {
+.people-metadata-person-notes {
 	line-height: 1.4;
 }
 
-.person-notes > p:first-child {
+.people-metadata-person-notes > p:first-child {
 	margin-top: 0;
 }
 
-.person-notes > p:last-child {
+.people-metadata-person-notes > p:last-child {
 	margin-bottom: 0;
 }
 
-.definition-popover-filename {
+.people-metadata-definition-popover-filename {
 	color: var(--text-faint);
 	font-size: var(--font-ui-small);
 	text-align: right;
@@ -105,31 +113,31 @@
 	font-style: italic;
 }
 
-.def-decoration {
+.people-metadata-def-decoration {
 	text-decoration: double underline var(--person-underline-color, #ff6b35);
 	-webkit-text-decoration: double underline var(--person-underline-color, #ff6b35);
 }
 
-.def-link-decoration {
+.people-metadata-def-link-decoration {
 	text-decoration: underline var(--color-green) dotted;
 	-webkit-text-decoration: underline var(--color-green) dotted;
 	cursor: pointer;
 }
 
-.edit-modal-section-header {
+.people-metadata-edit-modal-section-header {
 	margin-top: 5px;
 	margin-bottom: 5px;
 	color: var(--text-muted)
 }
 
-.edit-modal-aliases {
+.people-metadata-edit-modal-aliases {
 	width: 100%;
 	resize: none;
 	font-size: var(--font-ui-medium);
 	height: 2em;
 }
 
-.edit-modal-textarea {
+.people-metadata-edit-modal-textarea {
 	width: 100%;
 	height: 20vh;
 	resize: none;
@@ -137,7 +145,7 @@
 	margin-bottom: 10px;
 }
 
-.edit-modal-save-button {
+.people-metadata-edit-modal-save-button {
 	font-size: var(--font-ui-medium);
 	float: right;
 	background-color: var(--interactive-normal);

@@ -5,11 +5,13 @@ import { DefFileType } from "src/core/file-type";
 import { logError } from "src/util/log";
 
 
-export function registerDefFile(app: App, file: TFile, fileType: DefFileType) {
-	app.fileManager.processFrontMatter(file, fm => {
-		fm[DEF_TYPE_FM] = fileType; 
-		getDefFileManager().loadDefinitions();
-	}).catch(e => {
+export async function registerDefFile(app: App, file: TFile, fileType: DefFileType) {
+	try {
+		await app.fileManager.processFrontMatter(file, fm => {
+			fm[DEF_TYPE_FM] = fileType;
+			getDefFileManager().loadDefinitions();
+		});
+	} catch (e) {
 		logError(`Err writing to frontmatter of file: ${e}`);
-	});
+	}
 }

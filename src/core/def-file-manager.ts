@@ -7,6 +7,7 @@ import { useRetry } from "src/util/retry";
 import { FileParser } from "./file-parser";
 import { DefFileType } from "./file-type";
 import { PersonMetadata } from "./model";
+import { PluginContext } from "./plugin-context";
 
 let defFileManager: DefManager;
 
@@ -43,7 +44,10 @@ export class DefManager {
 		this.lastUpdate = 0;
 		this.markedDirty = [];
 
-		activeWindow.NoteDefinition.definitions.global = this.globalDefs;
+		// Set the global definitions in the context
+		if (PluginContext.isInitialized()) {
+			PluginContext.getInstance().definitions.global = this.globalDefs;
+		}
 
 		this.loadDefinitions();
 	}
@@ -182,9 +186,10 @@ export class DefManager {
 	// Load all people from registered people folder
 	// This will recurse through the people folder, parsing all people files
 	// Expensive operation so use sparingly
-	loadDefinitions() {
+	async loadDefinitions() {
 		this.reset();
-		this.loadGlobals().then(this.updateActiveFile.bind(this));
+		await this.loadGlobals();
+		this.updateActiveFile();
 	}
 
 	private getDefRepo() {
@@ -312,7 +317,11 @@ export class DefManager {
 	}
 
 	getGlobalDefFolder() {
-		return window.NoteDefinition.settings.defFolder || DEFAULT_DEF_FOLDER;
+		try {
+			return PluginContext.getInstance().settings.defFolder || DEFAULT_DEF_FOLDER;
+		} catch (e) {
+			return DEFAULT_DEF_FOLDER;
+		}
 	}
 }
 

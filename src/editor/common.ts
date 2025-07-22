@@ -1,10 +1,12 @@
 import { Platform } from "obsidian";
 import { getSettings, PopoverEventSettings } from "src/settings";
+import { DefinitionPreviewService } from "src/core/definition-preview-service";
 
-const triggerFunc = 'event.stopPropagation();activeWindow.NoteDefinition.triggerDefPreview(this);';
-const leaveFunc = 'activeWindow.NoteDefinition.closeDefPreview();';
+const previewService = DefinitionPreviewService.getInstance();
+const triggerFunc = previewService.getTriggerFunctionString();
+const leaveFunc = previewService.getCloseFunctionString();
 
-export const DEF_DECORATION_CLS = "def-decoration";
+export const DEF_DECORATION_CLS = "people-metadata-def-decoration";
 
 // For normal decoration of people
 export function getDecorationAttrs(phrase: string, companyName?: string): { [key: string]: string } {

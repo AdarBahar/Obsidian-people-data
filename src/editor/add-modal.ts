@@ -20,44 +20,44 @@ export class AddDefinitionModal {
 
 	open(text?: string) {
 		this.submitting = false;
-		this.modal.setTitle("Add a Person");
+		this.modal.setTitle("Add a person");
 		this.modal.contentEl.createDiv({
-			cls: "edit-modal-section-header",
-			text: "Full Name"
+			cls: "people-metadata-edit-modal-section-header",
+			text: "Full name"
 		})
 		const fullNameText = this.modal.contentEl.createEl("textarea", {
-			cls: 'edit-modal-aliases',
+			cls: 'people-metadata-edit-modal-aliases',
 			attr: {
 				placeholder: "John Smith"
 			},
 			text: text ?? ''
 		});
 		this.modal.contentEl.createDiv({
-			cls: "edit-modal-section-header",
-			text: "Job Title"
+			cls: "people-metadata-edit-modal-section-header",
+			text: "Job title"
 		})
 		const jobTitleText = this.modal.contentEl.createEl("textarea", {
-			cls: 'edit-modal-aliases',
+			cls: 'people-metadata-edit-modal-aliases',
 			attr: {
 				placeholder: "Dev Team Leader"
 			},
 		});
 		this.modal.contentEl.createDiv({
-			cls: "edit-modal-section-header",
+			cls: "people-metadata-edit-modal-section-header",
 			text: "Department"
 		});
 		const departmentText = this.modal.contentEl.createEl("textarea", {
-			cls: 'edit-modal-aliases',
+			cls: 'people-metadata-edit-modal-aliases',
 			attr: {
 				placeholder: "Engineering"
 			},
 		});
 		this.modal.contentEl.createDiv({
-			cls: "edit-modal-section-header",
+			cls: "people-metadata-edit-modal-section-header",
 			text: "Description"
 		});
 		const descriptionText = this.modal.contentEl.createEl("textarea", {
-			cls: 'edit-modal-textarea',
+			cls: 'people-metadata-edit-modal-textarea',
 			attr: {
 				placeholder: "Add description here"
 			},
@@ -65,10 +65,10 @@ export class AddDefinitionModal {
 
 		const defManager = getDefFileManager();
 		this.defFilePickerSetting = new Setting(this.modal.contentEl)
-			.setName("Choose Company")
+			.setName("Choose company")
 			.addDropdown(component => {
 				// Add "Create a new Company" option first
-				component.addOption("__CREATE_NEW__", "Create a new Company");
+				component.addOption("__CREATE_NEW__", "Create a new company");
 
 				// Add existing companies
 				const defFiles = defManager.getConsolidatedDefFiles();
@@ -81,7 +81,7 @@ export class AddDefinitionModal {
 
 		const button = this.modal.contentEl.createEl("button", {
 			text: "Save",
-			cls: 'edit-modal-save-button',
+			cls: 'people-metadata-edit-modal-save-button',
 		});
 		button.addEventListener('click', async () => {
 			if (this.submitting) {

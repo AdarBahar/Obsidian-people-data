@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, setTooltip } from "obsidian";
 import { DefFileType } from "./core/file-type";
+import { PluginContext } from "./core/plugin-context";
 
 export enum PopoverEventSettings {
 	Hover = "hover",
@@ -71,7 +72,7 @@ export class SettingsTab extends PluginSettingTab {
 	constructor(app: App, plugin: Plugin, saveCallback: () => Promise<void>) {
 		super(app, plugin);
 		this.plugin = plugin;
-		this.settings = window.NoteDefinition.settings;
+		this.settings = PluginContext.getInstance().settings;
 		this.saveCallback = saveCallback;
 	}
 
@@ -81,8 +82,8 @@ export class SettingsTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName("Enable in Reading View")
-			.setDesc("Allow People Metadata to be shown in Reading View")
+			.setName("Enable in reading view")
+			.setDesc("Allow people metadata to be shown in reading view")
 			.addToggle((component) => {
 				component.setValue(this.settings.enableInReadingView);
 				component.onChange(async (val) => {
@@ -103,7 +104,7 @@ export class SettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("People folder")
-			.setDesc("Files within this folder will be treated as People definition files")
+			.setDesc("Files within this folder will be treated as people definition files")
 			.addText((component) => {
 				component.setValue(this.settings.defFolder);
 				component.setPlaceholder(DEFAULT_DEF_FOLDER);
@@ -117,7 +118,7 @@ export class SettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Auto-register new files")
-			.setDesc("Automatically register new markdown files created in the People folder as People definition files")
+			.setDesc("Automatically register new markdown files created in the people folder as people definition files")
 			.addToggle((component) => {
 				component.setValue(this.settings.autoRegisterNewFiles ?? true);
 				component.onChange(async (val) => {
@@ -127,7 +128,7 @@ export class SettingsTab extends PluginSettingTab {
 			});
 		new Setting(containerEl)
 			.setName("People file format settings")
-			.setDesc("Customise parsing rules for People files")
+			.setDesc("Customise parsing rules for people files")
 			.addExtraButton(component => {
 				component.onClick(() => {
 					const modal = new Modal(this.app);
@@ -170,8 +171,8 @@ export class SettingsTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Default People file type")
-			.setDesc("When the 'def-type' frontmatter is not specified, the People file will be treated as this configured default file type.")
+			.setName("Default people file type")
+			.setDesc("When the 'def-type' frontmatter is not specified, the people file will be treated as this configured default file type.")
 			.addDropdown(component => {
 				component.addOption(DefFileType.Consolidated, "consolidated");
 				component.addOption(DefFileType.Atomic, "atomic");
@@ -186,11 +187,11 @@ export class SettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setHeading()
-			.setName("People Popover Settings");
+			.setName("People popover settings");
 
 		new Setting(containerEl)
 			.setName("People popover trigger")
-			.setDesc("Choose how to trigger the People popover when hovering over or clicking on people names")
+			.setDesc("Choose how to trigger the people popover when hovering over or clicking on people names")
 			.addDropdown((component) => {
 				component.addOption(PopoverEventSettings.Hover, "Hover");
 				component.addOption(PopoverEventSettings.Click, "Click");
@@ -210,7 +211,7 @@ export class SettingsTab extends PluginSettingTab {
 		if (this.settings.popoverEvent === PopoverEventSettings.Hover) {
 			new Setting(containerEl)
 				.setName("People popover dismiss")
-				.setDesc("Choose how to close the People popover when using hover trigger")
+				.setDesc("Choose how to close the people popover when using hover trigger")
 				.addDropdown(component => {
 					component.addOption(PopoverDismissType.Click, "Click");
 					component.addOption(PopoverDismissType.MouseExit, "Mouse exit")
@@ -233,7 +234,7 @@ export class SettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Display company file name")
-			.setDesc("Show the company file name in the People popover")
+			.setDesc("Show the company file name in the people popover")
 			.addToggle(component => {
 				component.setValue(this.settings.defPopoverConfig.displayDefFileName);
 				component.onChange(async value => {
@@ -244,7 +245,7 @@ export class SettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Custom popover size")
-			.setDesc("Set custom maximum dimensions for the People popover. Not recommended as it prevents dynamic sizing based on your viewport.")
+			.setDesc("Set custom maximum dimensions for the people popover. Not recommended as it prevents dynamic sizing based on your viewport.")
 			.addToggle(component => {
 				component.setValue(this.settings.defPopoverConfig.enableCustomSize);
 				component.onChange(async value => {
@@ -257,7 +258,7 @@ export class SettingsTab extends PluginSettingTab {
 		if (this.settings.defPopoverConfig.enableCustomSize) {
 			new Setting(containerEl)
 				.setName("Popover width (px)")
-				.setDesc("Maximum width of the People popover")
+				.setDesc("Maximum width of the people popover")
 				.addSlider(component => {
 					component.setLimits(150, window.innerWidth, 1);
 					component.setValue(this.settings.defPopoverConfig.maxWidth);
@@ -270,7 +271,7 @@ export class SettingsTab extends PluginSettingTab {
 
 			new Setting(containerEl)
 				.setName("Popover height (px)")
-				.setDesc("Maximum height of the People popover")
+				.setDesc("Maximum height of the people popover")
 				.addSlider(component => {
 					component.setLimits(150, window.innerHeight, 1);
 					component.setValue(this.settings.defPopoverConfig.maxHeight);
@@ -286,7 +287,7 @@ export class SettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Popover background colour")
-			.setDesc("Customize the background colour of the People popover")
+			.setDesc("Customize the background colour of the people popover")
 			.addExtraButton(component => {
 				component.setIcon("rotate-ccw");
 				component.setTooltip("Reset to default colour set by theme");
@@ -309,5 +310,5 @@ export class SettingsTab extends PluginSettingTab {
 }
 
 export function getSettings(): Settings {
-	return window.NoteDefinition.settings;
+	return PluginContext.getInstance().settings;
 }

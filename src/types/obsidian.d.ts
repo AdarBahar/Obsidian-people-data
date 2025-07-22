@@ -9,9 +9,3 @@ interface FileItem {
 	selfEl: HTMLElement;
 	innerEl: HTMLElement;
 }
-
-interface TFile {
-	path: string;
-	name: string;
-	content: string;
-}

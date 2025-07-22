@@ -4,6 +4,7 @@ import { getSettings, PopoverEventSettings } from "src/settings";
 import { DEF_DECORATION_CLS, getDecorationAttrs } from "./common";
 import { getDefinitionPopover } from "./definition-popover";
 import { LineScanner, PhraseInfo } from "./definition-search";
+import { DefinitionPreviewService } from "src/core/definition-preview-service";
 
 
 
@@ -13,7 +14,7 @@ interface Marks {
 }
 
 export const postProcessor: MarkdownPostProcessor = (element, context) => {
-	const shouldRunPostProcessor = window.NoteDefinition.settings.enableInReadingView;
+	const shouldRunPostProcessor = getSettings().enableInReadingView;
 	if (!shouldRunPostProcessor) {
 		return;
 	}
@@ -92,8 +93,9 @@ function getNormalDecorationSpan(container: HTMLElement, phraseInfo: PhraseInfo,
 	// Add mouse leave listener for hover popover behavior
 	const settings = getSettings();
 	if (settings.popoverEvent !== PopoverEventSettings.Click) {
+		const previewService = DefinitionPreviewService.getInstance();
 		span.addEventListener("mouseleave", () => {
-			window.NoteDefinition.closeDefPreview();
+			previewService.closeDefPreview();
 		});
 	}
 	

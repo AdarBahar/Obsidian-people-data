@@ -19,7 +19,7 @@ export class DefinitionPopover extends Component {
 	app: App
 	plugin: Plugin;
 	// Code mirror editor object for capturing vim events
-	cmEditor: any;
+	cmEditor: unknown;
 	// Ref to the currently mounted popover
 	// There should only be one mounted popover at all times
 	mountedPopover: HTMLElement | undefined;
@@ -89,7 +89,7 @@ export class DefinitionPopover extends Component {
 
 		// Try to access the CodeMirror instance through the editor
 		// @ts-ignore - This is accessing internal Obsidian API
-		const cmEditor = editor.cm?.cm;
+		const cmEditor = editor.cm;
 		return cmEditor || null;
 	}
 
@@ -101,53 +101,66 @@ export class DefinitionPopover extends Component {
 		return verticalOffset > parseInt(containerStyle.height) / 2;
 	}
 
-	// Creates popover element and its children, without displaying it 
+	// Creates popover element and its children, without displaying it
 	private createElement(person: PersonMetadata, parent: HTMLElement): HTMLDivElement {
 		const popoverSettings = getSettings().defPopoverConfig;
-		const el = parent.createEl("div", {
-			cls: "definition-popover",
+
+		// Build CSS classes
+		let cssClasses = "people-metadata-definition-popover is-hidden";
+		if (popoverSettings.backgroundColour) {
+			cssClasses += " has-custom-background";
+		}
+
+		const el = parent.createDiv({
+			cls: cssClasses,
 			attr: {
 				id: DEF_POPOVER_ID,
-				style: `visibility:hidden;${popoverSettings.backgroundColour ? 
-`background-color: ${popoverSettings.backgroundColour};` : ''}`
 			},
 		});
 
+		// Set custom background color as CSS variable if provided
+		if (popoverSettings.backgroundColour) {
+			el.style.setProperty('--custom-popover-background', popoverSettings.backgroundColour);
+		}
+
 		// Create header with person name and company info
-		const headerEl = el.createEl("div", { cls: "popover-header" });
-		headerEl.createEl("h2", { text: person.fullName, cls: "person-name" });
+		const headerEl = el.createDiv({ cls: "people-metadata-popover-header" });
+		const personNameEl = headerEl.createEl("h2", {
+			cls: "people-metadata-person-name",
+			text: person.fullName
+		});
 
 		// Company info on the right side of header
 		if (person.companyName || person.companyLogo) {
-			const companyEl = headerEl.createEl("div", { cls: "company-info" });
+			const companyEl = headerEl.createDiv({ cls: "people-metadata-company-info" });
 			if (person.companyLogo) {
-				const logoEl = companyEl.createEl("div", { cls: "company-logo" });
+				const logoEl = companyEl.createDiv({ cls: "people-metadata-company-logo" });
 				this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
 			}
 			if (person.companyName) {
-				companyEl.createEl("div", { text: person.companyName, cls: "company-name" });
+				companyEl.createDiv({ text: person.companyName, cls: "people-metadata-company-name" });
 			}
 		}
 
 		// Add filename display if enabled
 		if (popoverSettings.displayDefFileName) {
-			const filenameEl = el.createEl("div", {
+			const filenameEl = el.createDiv({
 				text: person.file.basename,
-				cls: "definition-popover-filename"
+				cls: "people-metadata-definition-popover-filename"
 			});
 		}
 
 		// Person details (removed company field)
-		const detailsEl = el.createEl("div", { cls: "person-details" });
+		const detailsEl = el.createDiv({ cls: "people-metadata-person-details" });
 		if (person.position) {
-			detailsEl.createEl("div", { text: `Position: ${person.position}` });
+			detailsEl.createDiv({ text: `Position: ${person.position}` });
 		}
 		if (person.department) {
-			detailsEl.createEl("div", { text: `Department: ${person.department}` });
+			detailsEl.createDiv({ text: `Department: ${person.department}` });
 		}
 
 		// Notes content
-		const contentEl = el.createEl("div", { cls: "person-notes" });
+		const contentEl = el.createDiv({ cls: "people-metadata-person-notes" });
 		contentEl.setAttr("ctx", "person-popup");
 
 		const currComponent = this;
@@ -164,7 +177,7 @@ export class DefinitionPopover extends Component {
 			normalizePath(person.file.path), this);
 
 		// Set up error handling for failed images
-		setTimeout(() => {
+		window.setTimeout(() => {
 			const imgElements = logoEl.querySelectorAll('img');
 			imgElements.forEach(img => {
 				// Check if image failed to load or is broken
@@ -185,8 +198,8 @@ export class DefinitionPopover extends Component {
 		logoEl.empty();
 
 		// Create default logo element
-		const defaultLogo = logoEl.createEl("div", {
-			cls: "company-logo-default",
+		const defaultLogo = logoEl.createDiv({
+			cls: "people-metadata-company-logo-default",
 			text: companyName ? companyName.substring(0, 2).toUpperCase() : "CO"
 		});
 
@@ -266,11 +279,12 @@ export class DefinitionPopover extends Component {
 		// Offset coordinates to be relative to container
 		coords = this.offsetCoordsToContainer(coords, mdView.containerEl);
 
-		const positionStyle: Partial<CSSStyleDeclaration> = {
-			visibility: 'visible',
-		};
+		// Remove the hidden class to make the popover visible
+		this.mountedPopover.removeClass('is-hidden');
 
-		positionStyle.maxWidth = popoverSettings.enableCustomSize && popoverSettings.maxWidth ? 
+		const positionStyle: Partial<CSSStyleDeclaration> = {};
+
+		positionStyle.maxWidth = popoverSettings.enableCustomSize && popoverSettings.maxWidth ?
 			`${popoverSettings.maxWidth}px` : `${parseInt(containerStyle.width) / 2}px`;
 		if (this.shouldOpenToLeft(coords.left, containerStyle)) {
 			positionStyle.right = `${parseInt(containerStyle.width) - coords.right}px`;
@@ -280,7 +294,7 @@ export class DefinitionPopover extends Component {
 
 		if (this.shouldOpenUpwards(coords.top, containerStyle)) {
 			positionStyle.bottom = `${parseInt(containerStyle.height) - coords.top}px`;
-			positionStyle.maxHeight = popoverSettings.enableCustomSize && popoverSettings.maxHeight ? 
+			positionStyle.maxHeight = popoverSettings.enableCustomSize && popoverSettings.maxHeight ?
 				`${popoverSettings.maxHeight}px` : `${coords.top - offsetHeaderHeight}px`;
 		} else {
 			positionStyle.top = `${coords.bottom}px`;
@@ -313,8 +327,8 @@ export class DefinitionPopover extends Component {
 		this.getActiveView()?.containerEl.addEventListener("keypress", this.close);
 		this.getActiveView()?.containerEl.addEventListener("click", this.clickClose);
 		
-		if (this.cmEditor) {
-			this.cmEditor.on("vim-keypress", this.close);
+		if (this.cmEditor && typeof this.cmEditor === 'object' && this.cmEditor !== null && 'on' in this.cmEditor) {
+			(this.cmEditor as { on: (event: string, callback: () => void) => void }).on("vim-keypress", this.close);
 		}
 		const scroller = this.getCmScroller();
 		if (scroller) {
@@ -326,8 +340,8 @@ export class DefinitionPopover extends Component {
 		this.getActiveView()?.containerEl.removeEventListener("keypress", this.close);
 		this.getActiveView()?.containerEl.removeEventListener("click", this.clickClose);
 
-		if (this.cmEditor) {
-			this.cmEditor.off("vim-keypress", this.close);
+		if (this.cmEditor && typeof this.cmEditor === 'object' && this.cmEditor !== null && 'off' in this.cmEditor) {
+			(this.cmEditor as { off: (event: string, callback: () => void) => void }).off("vim-keypress", this.close);
 		}
 		const scroller = this.getCmScroller();
 		if (scroller) {

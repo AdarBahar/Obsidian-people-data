@@ -18,33 +18,36 @@ export class DefinitionModal extends Component {
 		this.modal.contentEl.empty();
 
 		// Create header with person name and company info
-		const headerEl = this.modal.contentEl.createEl("div", { cls: "modal-header" });
-		headerEl.createEl("h1", { text: person.fullName, cls: "person-name" });
+		const headerEl = this.modal.contentEl.createDiv({ cls: "people-metadata-modal-header" });
+		const personNameEl = headerEl.createEl("h1", {
+			cls: "people-metadata-person-name",
+			text: person.fullName
+		});
 
 		// Company info on the right side of header
 		if (person.companyName || person.companyLogo) {
-			const companyEl = headerEl.createEl("div", { cls: "company-info" });
+			const companyEl = headerEl.createDiv({ cls: "people-metadata-company-info" });
 			if (person.companyLogo) {
-				const logoEl = companyEl.createEl("div", { cls: "company-logo" });
+				const logoEl = companyEl.createDiv({ cls: "people-metadata-company-logo" });
 				this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
 			}
 			if (person.companyName) {
-				companyEl.createEl("div", { text: person.companyName, cls: "company-name" });
+				companyEl.createDiv({ text: person.companyName, cls: "people-metadata-company-name" });
 			}
 		}
 
 		// Person details (removed company field)
-		const detailsEl = this.modal.contentEl.createEl("div", { cls: "person-details" });
+		const detailsEl = this.modal.contentEl.createDiv({ cls: "people-metadata-person-details" });
 		if (person.position) {
-			detailsEl.createEl("div", { text: `Position: ${person.position}` });
+			detailsEl.createDiv({ text: `Position: ${person.position}` });
 		}
 		if (person.department) {
-			detailsEl.createEl("div", { text: `Department: ${person.department}` });
+			detailsEl.createDiv({ text: `Department: ${person.department}` });
 		}
 
 		// Notes content
-		const notesContent = this.modal.contentEl.createEl("div", {
-			cls: "person-notes",
+		const notesContent = this.modal.contentEl.createDiv({
+			cls: "people-metadata-person-notes",
 			attr: {
 				ctx: "person-popup"
 			}
@@ -60,7 +63,7 @@ export class DefinitionModal extends Component {
 			normalizePath(person.file.path), this);
 
 		// Set up error handling for failed images
-		setTimeout(() => {
+		window.setTimeout(() => {
 			const imgElements = logoEl.querySelectorAll('img');
 			imgElements.forEach(img => {
 				// Check if image failed to load or is broken
@@ -81,8 +84,8 @@ export class DefinitionModal extends Component {
 		logoEl.empty();
 
 		// Create default logo element
-		const defaultLogo = logoEl.createEl("div", {
-			cls: "company-logo-default",
+		const defaultLogo = logoEl.createDiv({
+			cls: "people-metadata-company-logo-default",
 			text: companyName ? companyName.substring(0, 2).toUpperCase() : "CO"
 		});
 
