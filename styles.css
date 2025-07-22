@@ -736,6 +736,81 @@
 	border: 1px solid var(--background-modifier-border);
 }
 
+/* Custom Color Dropdown Styles */
+.company-config-color-dropdown {
+	position: relative;
+	width: 100%;
+}
+
+.company-config-color-selected {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	padding: var(--size-2-1);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.company-config-color-selected:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.company-config-color-options {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	box-shadow: var(--shadow-s);
+	z-index: 1000;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.company-config-color-option {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	padding: var(--size-2-1);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.company-config-color-option:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.company-config-color-sample-small {
+	width: 16px;
+	height: 16px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.company-config-color-option-text {
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+}
+
+.company-config-dropdown-arrow {
+	margin-left: auto;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+/* Favicon Error Styles */
+.company-config-favicon-error {
+	font-size: var(--font-ui-small);
+	color: var(--text-error);
+	margin-left: var(--size-2-1);
+}
+
 /* Fade effect for scrollable content */
 .people-metadata-tab-content::after {
 	content: '';

@@ -182,16 +182,71 @@ export class CompanyConfigModal extends Modal {
 			value: isHexColor ? currentColor : ""
 		});
 
-		// Color name dropdown
+		// Color name dropdown with color samples
 		const nameContainer = section.createDiv({ cls: "company-config-input-container" });
 		nameContainer.createEl("label", { text: "Color Name:" });
-		const nameSelect = nameContainer.createEl("select");
 
-		nameSelect.createEl("option", { value: "", text: "No Color" });
+		// Create custom dropdown container
+		const dropdownContainer = nameContainer.createDiv({ cls: "company-config-color-dropdown" });
+		const selectedDisplay = dropdownContainer.createDiv({ cls: "company-config-color-selected" });
+		const optionsList = dropdownContainer.createDiv({ cls: "company-config-color-options" });
+
+		// Update selected display
+		const updateSelectedDisplay = (colorName: string) => {
+			selectedDisplay.empty();
+			if (!colorName) {
+				selectedDisplay.createSpan({ text: "No Color", cls: "company-config-color-option-text" });
+			} else {
+				const colorSample = selectedDisplay.createDiv({ cls: "company-config-color-sample-small" });
+				colorSample.style.backgroundColor = parseColorValue(colorName);
+				selectedDisplay.createSpan({ text: colorName, cls: "company-config-color-option-text" });
+			}
+			selectedDisplay.createSpan({ text: "▼", cls: "company-config-dropdown-arrow" });
+		};
+
+		// Create options
+		const createOption = (colorName: string, displayText: string) => {
+			const option = optionsList.createDiv({ cls: "company-config-color-option" });
+			if (colorName) {
+				const colorSample = option.createDiv({ cls: "company-config-color-sample-small" });
+				colorSample.style.backgroundColor = parseColorValue(colorName);
+			}
+			option.createSpan({ text: displayText, cls: "company-config-color-option-text" });
+
+			option.onclick = () => {
+				state.currentConfig.color = colorName;
+				state.hasUnsavedChanges = true;
+				this.updateActionButtons(container, company);
+				this.updateColorPreview(section, colorName);
+				updateSelectedDisplay(colorName);
+				optionsList.style.display = "none";
+			};
+
+			return option;
+		};
+
+		// Add "No Color" option
+		createOption("", "No Color");
+
+		// Add color options
 		getAvailableColorNames().forEach(colorName => {
-			const option = nameSelect.createEl("option", { value: colorName, text: colorName });
-			if (colorName === currentColor.toLowerCase()) {
-				option.selected = true;
+			createOption(colorName, colorName);
+		});
+
+		// Initialize display
+		updateSelectedDisplay(currentColor);
+		optionsList.style.display = "none";
+
+		// Toggle dropdown
+		selectedDisplay.onclick = () => {
+			const isVisible = optionsList.style.display === "block";
+			optionsList.style.display = isVisible ? "none" : "block";
+		};
+
+		// Close dropdown when clicking outside
+		document.addEventListener('click', (e) => {
+			if (!dropdownContainer.contains(e.target as Node)) {
+				optionsList.style.display = "none";
 			}
 		});
 
@@ -217,13 +272,6 @@ export class CompanyConfigModal extends Modal {
 			state.hasUnsavedChanges = true;
 			this.updateActionButtons(container, company);
 			this.updateColorPreview(section, hexTextInput.value);
-		};
-
-		nameSelect.onchange = () => {
-			state.currentConfig.color = nameSelect.value;
-			state.hasUnsavedChanges = true;
-			this.updateActionButtons(container, company);
-			this.updateColorPreview(section, nameSelect.value);
 		};
 
 		// Add color preview container
@@ -353,24 +401,44 @@ export class CompanyConfigModal extends Modal {
 	}
 
 	private updateFaviconPreview(container: HTMLElement, url: string) {
+		// Find the favicon container within the current company's settings
 		const faviconContainer = container.querySelector(".company-config-favicon-container") as HTMLElement;
-		if (!faviconContainer) return;
+		if (!faviconContainer) {
+			console.log("Favicon container not found");
+			return;
+		}
 
 		faviconContainer.empty();
 
 		if (!url || !this.isValidUrl(url)) {
+			console.log("Invalid URL:", url);
 			return;
 		}
 
 		const faviconUrl = this.generateFaviconUrl(url);
+		console.log("Generated favicon URL:", faviconUrl);
 
 		const faviconSection = faviconContainer.createDiv({ cls: "company-config-favicon-section" });
 		faviconSection.createEl("span", { text: "🌐 Favicon from website:" });
 
 		const faviconPreview = faviconSection.createEl("img", {
-			cls: "company-config-favicon-img",
-			attr: { src: faviconUrl, alt: "Favicon" }
+			cls: "company-config-favicon-img"
 		});
+		faviconPreview.src = faviconUrl;
+		faviconPreview.alt = "Favicon";
+
+		// Add error handling for favicon loading
+		faviconPreview.onerror = () => {
+			console.log("Favicon failed to load:", faviconUrl);
+			faviconSection.createDiv({
+				text: "⚠️ Favicon not available",
+				cls: "company-config-favicon-error"
+			});
+		};
+
+		faviconPreview.onload = () => {
+			console.log("Favicon loaded successfully:", faviconUrl);
+		};
 
 		const useFaviconButton = faviconSection.createEl("button", {
 			text: "Use Favicon",
@@ -378,12 +446,18 @@ export class CompanyConfigModal extends Modal {
 		});
 
 		useFaviconButton.onclick = () => {
-			const companyName = container.closest('.company-config-item')?.querySelector('.company-config-name')?.textContent;
-			if (companyName) {
+			// Find the company name from the closest company item
+			const companyItem = container.closest('.company-config-item');
+			const companyNameEl = companyItem?.querySelector('.company-config-name');
+			const companyName = companyNameEl?.textContent;
+
+			if (companyName && this.companyStates.has(companyName)) {
 				const state = this.companyStates.get(companyName)!;
 				state.currentConfig.logo = `![Company Logo](${faviconUrl})`;
 				state.hasUnsavedChanges = true;
 				this.onOpen(); // Refresh to show changes
+			} else {
+				console.log("Could not find company name or state");
 			}
 		};
 	}
