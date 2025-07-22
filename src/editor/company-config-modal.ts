@@ -65,25 +65,32 @@ export class CompanyConfigModal extends Modal {
 		// Color configuration
 		new Setting(section)
 			.setName("Company Color")
-			.setDesc("Choose a color for the double underline decoration")
+			.setDesc("Choose a color name for the double underline decoration")
 			.addDropdown(dropdown => {
 				// Add "None" option
 				dropdown.addOption("", "None");
-				
-				// Add predefined colors
+
+				// Add predefined colors with emojis for visual appeal
+				const colorEmojis: Record<string, string> = {
+					blue: "🔵", red: "🔴", green: "🟢", orange: "🟠", purple: "🟣", teal: "🔷",
+					navy: "🔹", crimson: "❤️", forest: "🌲", amber: "🟡", violet: "💜", cyan: "🔵",
+					slate: "⚫", rose: "🌹", lime: "🟢", indigo: "🔵", pink: "💗", brown: "🤎",
+					mint: "🍃", coral: "🪸", lavender: "💜", gold: "🥇", silver: "🥈", bronze: "🥉"
+				};
+
 				getAvailableColorNames().forEach(colorName => {
-					const hex = COMPANY_COLOR_PALETTE[colorName];
-					dropdown.addOption(colorName, `${colorName} (${hex})`);
+					const emoji = colorEmojis[colorName] || "🎨";
+					dropdown.addOption(colorName, `${emoji} ${colorName}`);
 				});
-				
-				// Add custom hex option
-				dropdown.addOption("custom", "Custom Hex Color");
-				
+
+				// Add custom option for hex codes
+				dropdown.addOption("custom", "🎨 Custom (hex code)");
+
 				// Set current value
 				const currentColor = company.color || "";
 				const isCustom = currentColor && !getAvailableColorNames().includes(currentColor.toLowerCase()) && currentColor !== "";
 				dropdown.setValue(isCustom ? "custom" : currentColor.toLowerCase());
-				
+
 				dropdown.onChange(value => {
 					this.handleColorChange(section, company, value, index);
 				});
@@ -92,7 +99,7 @@ export class CompanyConfigModal extends Modal {
 		// Custom hex input (initially hidden)
 		const customColorSetting = new Setting(section)
 			.setName("Custom Hex Color")
-			.setDesc("Enter a hex color code (e.g., #ff6b35)")
+			.setDesc("Enter a hex color code (e.g., #ff6b35) - Note: Color names are recommended!")
 			.addText(text => {
 				text.setPlaceholder("#ff6b35");
 				if (company.color && !getAvailableColorNames().includes(company.color.toLowerCase())) {
@@ -159,9 +166,15 @@ export class CompanyConfigModal extends Modal {
 		const preview = previewDiv.createDiv({ cls: "company-config-color-sample" });
 		preview.style.backgroundColor = parsedColor;
 		preview.style.border = `2px solid ${parsedColor}`;
-		
-		previewDiv.createSpan({ 
-			text: `Preview: ${parsedColor}`,
+
+		// Show color name if it's a predefined color, otherwise show hex
+		const isColorName = getAvailableColorNames().includes(colorValue.toLowerCase());
+		const displayText = isColorName
+			? `${colorValue} (${parsedColor})`
+			: `Custom: ${parsedColor}`;
+
+		previewDiv.createSpan({
+			text: displayText,
 			cls: "company-config-color-text"
 		});
 	}
