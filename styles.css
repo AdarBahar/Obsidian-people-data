@@ -15,6 +15,9 @@
 .people-metadata-multi-company-popover {
 	min-width: 600px;
 	max-width: 700px;
+	min-height: 300px;
+	max-height: 500px;
+	height: auto;
 }
 
 .people-metadata-definition-popover.is-hidden {
@@ -201,14 +204,40 @@
 
 .people-metadata-tabs-content {
 	position: relative;
+	min-height: 200px;
+	max-height: 350px;
+	overflow: hidden;
 }
 
 .people-metadata-tab-content {
 	display: none;
+	height: 100%;
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding-right: var(--size-2-1);
 }
 
 .people-metadata-tab-content.active {
 	display: block;
+}
+
+/* Custom scrollbar styling for tab content */
+.people-metadata-tab-content::-webkit-scrollbar {
+	width: 6px;
+}
+
+.people-metadata-tab-content::-webkit-scrollbar-track {
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+}
+
+.people-metadata-tab-content::-webkit-scrollbar-thumb {
+	background: var(--text-muted);
+	border-radius: 3px;
+}
+
+.people-metadata-tab-content::-webkit-scrollbar-thumb:hover {
+	background: var(--text-normal);
 }
 
 /* Mobile-specific tab adjustments */
@@ -219,4 +248,44 @@
 .modal .people-metadata-tab-button {
 	flex: 1;
 	min-width: 100px;
+}
+
+.modal .people-metadata-tabs-content {
+	min-height: 250px;
+	max-height: 60vh;
+}
+
+.modal .people-metadata-tab-content {
+	padding-right: var(--size-2-2);
+}
+
+/* Fade effect for scrollable content */
+.people-metadata-tab-content::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 20px;
+	background: linear-gradient(transparent, var(--background-secondary));
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.2s ease;
+}
+
+.people-metadata-tab-content.has-scroll::after {
+	opacity: 1;
+}
+
+/* Ensure consistent spacing in tab content */
+.people-metadata-tab-content .people-metadata-company-info {
+	margin-bottom: var(--size-4-2);
+}
+
+.people-metadata-tab-content .people-metadata-person-details {
+	margin-bottom: var(--size-4-2);
+}
+
+.people-metadata-tab-content .people-metadata-person-notes {
+	margin-bottom: var(--size-2-1);
 }

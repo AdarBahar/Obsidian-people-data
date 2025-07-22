@@ -127,6 +127,9 @@ export class DefinitionModal extends Component {
 			tabButton.addEventListener('click', () => {
 				this.switchTab(tabsContainer, index);
 			});
+
+			// Check if content is scrollable and add fade effect
+			this.checkScrollableContent(tabContent);
 		});
 
 		this.modal.open();
@@ -146,7 +149,23 @@ export class DefinitionModal extends Component {
 		const activeContent = tabsContainer.querySelector(`.people-metadata-tab-content[data-tab-index="${activeIndex}"]`);
 
 		if (activeButton) activeButton.addClass('active');
-		if (activeContent) activeContent.addClass('active');
+		if (activeContent) {
+			activeContent.addClass('active');
+			// Check if the newly active content is scrollable
+			this.checkScrollableContent(activeContent as HTMLElement);
+		}
+	}
+
+	// Check if content is scrollable and add appropriate class
+	private checkScrollableContent(element: HTMLElement) {
+		// Use setTimeout to ensure content is rendered
+		setTimeout(() => {
+			if (element.scrollHeight > element.clientHeight) {
+				element.addClass('has-scroll');
+			} else {
+				element.removeClass('has-scroll');
+			}
+		}, 10);
 	}
 
 	private renderCompanyLogoWithFallback(logoMarkdown: string, logoEl: HTMLElement, person: PersonMetadata) {
