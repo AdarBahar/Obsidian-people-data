@@ -19,6 +19,7 @@ import { DefinitionPreviewService } from './core/definition-preview-service';
 import { initCompanyManager, getCompanyManager } from './core/company-manager';
 import { CompanyConfigModal } from './editor/company-config-modal';
 import { initNameAutoCompletion, NameAutoCompletion } from './editor/auto-completion';
+import { AboutPeopleMetadataModal } from './editor/about-modal';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
@@ -221,6 +222,15 @@ export default class NoteDefinition extends Plugin {
 				} catch (error) {
 					new Notice("Error refreshing plugin data: " + error.message);
 				}
+			}
+		});
+
+		this.addCommand({
+			id: "show-about",
+			name: "About People Metadata",
+			callback: () => {
+				const aboutModal = new AboutPeopleMetadataModal(this.app);
+				aboutModal.open();
 			}
 		});
 	}

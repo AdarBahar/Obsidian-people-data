@@ -2,6 +2,7 @@ import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, setTooltip } fro
 import { DefFileType } from "./core/file-type";
 import { PluginContext } from "./core/plugin-context";
 import { CompanyConfigModal } from "./editor/company-config-modal";
+import { AboutPeopleMetadataModal } from "./editor/about-modal";
 import { getCompanyManager } from "./core/company-manager";
 
 export enum PopoverEventSettings {
@@ -456,6 +457,24 @@ export class SettingsTab extends PluginSettingTab {
 					this.settings.defPopoverConfig.backgroundColour = val;
 					await this.saveCallback();
 				})
+			});
+
+		// About Section
+		new Setting(containerEl)
+			.setHeading()
+			.setName("About");
+
+		new Setting(containerEl)
+			.setName("About People Metadata")
+			.setDesc("Learn about the plugin's features, creator, and get access to documentation and support resources")
+			.addButton(button => {
+				button
+					.setButtonText("Show Info")
+					.setCta()
+					.onClick(() => {
+						const aboutModal = new AboutPeopleMetadataModal(this.app);
+						aboutModal.open();
+					});
 			});
 	}
 }

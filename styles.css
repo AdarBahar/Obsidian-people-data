@@ -947,6 +947,209 @@
 	margin-left: auto;
 }
 
+/* About People Metadata Modal Styles */
+.about-people-metadata-modal {
+	padding: 0 !important;
+}
+
+.about-people-metadata-modal .modal-content {
+	padding: 0 !important;
+	margin: 0 !important;
+	height: 100%;
+	overflow: hidden;
+}
+
+.about-modal-header {
+	background: var(--background-primary);
+	padding: var(--size-4-6) var(--size-4-6) var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
+	text-align: center;
+}
+
+.about-modal-title {
+	margin: 0 0 var(--size-2-2) 0;
+	font-size: var(--font-ui-larger);
+	font-weight: 600;
+	color: var(--text-accent);
+}
+
+.about-modal-description {
+	margin: 0;
+	font-size: var(--font-ui-medium);
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+.about-modal-content {
+	padding: var(--size-4-4) var(--size-4-6);
+	height: calc(100% - 120px);
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.about-modal-section {
+	margin-bottom: var(--size-4-6);
+}
+
+.about-modal-section h2 {
+	margin: 0 0 var(--size-4-3) 0;
+	font-size: var(--font-ui-large);
+	font-weight: 600;
+	color: var(--text-normal);
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: var(--size-2-1);
+}
+
+.creator-info {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+}
+
+.creator-info p {
+	margin: 0;
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+}
+
+.objectives-list {
+	margin: 0;
+	padding-left: var(--size-4-4);
+}
+
+.objectives-list li {
+	margin-bottom: var(--size-2-2);
+	font-size: var(--font-ui-medium);
+	line-height: 1.5;
+	color: var(--text-normal);
+}
+
+.features-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: var(--size-2-3);
+}
+
+.feature-item {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-2-3);
+	padding: var(--size-2-2);
+	border-radius: var(--radius-s);
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.feature-icon {
+	font-size: var(--font-ui-large);
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.feature-content {
+	flex: 1;
+	font-size: var(--font-ui-medium);
+	line-height: 1.4;
+	color: var(--text-normal);
+}
+
+.feature-content strong {
+	color: var(--text-accent);
+}
+
+.resources-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: var(--size-4-3);
+}
+
+.resource-item {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-2-3);
+	padding: var(--size-4-3);
+	border-radius: var(--radius-s);
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.resource-icon {
+	font-size: var(--font-ui-large);
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.resource-content {
+	flex: 1;
+}
+
+.resource-content strong {
+	display: block;
+	margin-bottom: var(--size-2-1);
+	color: var(--text-accent);
+	font-size: var(--font-ui-medium);
+}
+
+.resource-content a {
+	color: var(--text-accent);
+	text-decoration: none;
+	font-size: var(--font-ui-medium);
+}
+
+.resource-content a:hover {
+	text-decoration: underline;
+}
+
+.about-modal-footer {
+	border-top: 1px solid var(--background-modifier-border);
+	padding-top: var(--size-4-3);
+	margin-top: var(--size-4-6);
+}
+
+.version-info {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+	text-align: center;
+}
+
+.version-info p {
+	margin: 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+	.features-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.resources-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.version-info {
+		flex-direction: row;
+		justify-content: center;
+		gap: var(--size-4-4);
+	}
+}
+
+@media (max-width: 767px) {
+	.about-modal-header {
+		padding: var(--size-4-3) var(--size-4-3) var(--size-4-2);
+	}
+
+	.about-modal-content {
+		padding: var(--size-4-3);
+	}
+
+	.about-modal-title {
+		font-size: var(--font-ui-large);
+	}
+}
+
 /* Override Obsidian's default suggestion container styles */
 .suggestion-container.mod-complex {
 	min-width: 350px !important;
