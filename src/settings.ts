@@ -99,7 +99,7 @@ export const DEFAULT_SETTINGS: Partial<Settings> = {
 		enableCustomSize: false,
 		maxWidth: 150,
 		maxHeight: 150,
-		popoverDismissEvent: PopoverDismissType.Click,
+		popoverDismissEvent: PopoverDismissType.MouseExit,
 	}
 }
 
@@ -430,6 +430,9 @@ export class SettingsTab extends PluginSettingTab {
 					}
 					if (this.settings.popoverEvent === PopoverEventSettings.Click) {
 						this.settings.defPopoverConfig.popoverDismissEvent = PopoverDismissType.Click;
+					} else if (this.settings.popoverEvent === PopoverEventSettings.Hover) {
+						// Default to MouseExit for hover trigger for better UX
+						this.settings.defPopoverConfig.popoverDismissEvent = PopoverDismissType.MouseExit;
 					}
 					await this.saveCallback();
 					this.display();

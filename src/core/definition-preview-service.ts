@@ -64,9 +64,9 @@ export class DefinitionPreviewService {
 		};
 
 		if (allMatches.length === 1) {
-			defPopover.openAtCoords(allMatches[0], coords);
+			defPopover.openAtCoords(allMatches[0], coords, el);
 		} else {
-			defPopover.openMultipleAtCoords(allMatches, coords);
+			defPopover.openMultipleAtCoords(allMatches, coords, el);
 		}
 	}
 

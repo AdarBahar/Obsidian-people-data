@@ -24,6 +24,8 @@ export class DefinitionPopover extends Component {
 	// Ref to the currently mounted popover
 	// There should only be one mounted popover at all times
 	mountedPopover: HTMLElement | undefined;
+	private hoverCleanup?: () => void;
+	private currentTriggerElement?: HTMLElement;
 
 	constructor(plugin: Plugin) {
 		super();
@@ -59,8 +61,9 @@ export class DefinitionPopover extends Component {
 	}
 
 	// Open at coordinates (can use for opening at mouse position)
-	openAtCoords(person: PersonMetadata, coords: Coordinates) {
+	openAtCoords(person: PersonMetadata, coords: Coordinates, triggerElement?: HTMLElement) {
 		this.unmount();
+		this.currentTriggerElement = triggerElement;
 		this.mountAtCoordinates(person, coords);
 
 		if (!this.mountedPopover) {
@@ -71,8 +74,9 @@ export class DefinitionPopover extends Component {
 	}
 
 	// Open multiple companies at specific coordinates
-	openMultipleAtCoords(people: PersonMetadata[], coords: Coordinates) {
+	openMultipleAtCoords(people: PersonMetadata[], coords: Coordinates, triggerElement?: HTMLElement) {
 		this.unmount();
+		this.currentTriggerElement = triggerElement;
 		this.mountMultipleAtCoordinates(people, coords);
 
 		if (!this.mountedPopover) {
@@ -538,6 +542,7 @@ export class DefinitionPopover extends Component {
 		}
 		this.mountedPopover.remove();
 		this.mountedPopover = undefined;
+		this.currentTriggerElement = undefined;
 
 		this.unregisterClosePopoverListeners();
 	}
@@ -599,46 +604,53 @@ export class DefinitionPopover extends Component {
 				if (!isHoveringPopover && !isHoveringTrigger) {
 					this.close();
 				}
-			}, 100); // Small delay to allow mouse movement between elements
+			}, 150); // Increased delay for better UX
 		};
 
 		// Handle popover hover
-		this.mountedPopover.addEventListener('mouseenter', () => {
+		const popoverMouseEnter = () => {
 			isHoveringPopover = true;
 			clearDismissTimeout();
-		});
+		};
 
-		this.mountedPopover.addEventListener('mouseleave', () => {
+		const popoverMouseLeave = () => {
 			isHoveringPopover = false;
 			scheduleDismiss();
-		});
+		};
 
-		// Find and handle trigger element hover
-		const triggerElements = document.querySelectorAll('.people-metadata-def-decoration');
-		triggerElements.forEach(trigger => {
-			trigger.addEventListener('mouseenter', () => {
-				isHoveringTrigger = true;
-				clearDismissTimeout();
-			});
+		this.mountedPopover.addEventListener('mouseenter', popoverMouseEnter);
+		this.mountedPopover.addEventListener('mouseleave', popoverMouseLeave);
 
-			trigger.addEventListener('mouseleave', () => {
-				isHoveringTrigger = false;
-				scheduleDismiss();
-			});
-		});
+		// Handle trigger element hover - find the specific trigger that opened this popover
+		const currentTrigger = this.currentTriggerElement;
+		const triggerMouseEnter = () => {
+			isHoveringTrigger = true;
+			clearDismissTimeout();
+		};
+
+		const triggerMouseLeave = () => {
+			isHoveringTrigger = false;
+			scheduleDismiss();
+		};
+
+		if (currentTrigger) {
+			currentTrigger.addEventListener('mouseenter', triggerMouseEnter);
+			currentTrigger.addEventListener('mouseleave', triggerMouseLeave);
+		}
 
 		// Store cleanup function for later
 		this.hoverCleanup = () => {
 			clearDismissTimeout();
-			// Remove listeners from trigger elements
-			triggerElements.forEach(trigger => {
-				trigger.removeEventListener('mouseenter', () => {});
-				trigger.removeEventListener('mouseleave', () => {});
-			});
+			// Remove listeners from popover
+			this.mountedPopover?.removeEventListener('mouseenter', popoverMouseEnter);
+			this.mountedPopover?.removeEventListener('mouseleave', popoverMouseLeave);
+			// Remove listeners from trigger
+			if (currentTrigger) {
+				currentTrigger.removeEventListener('mouseenter', triggerMouseEnter);
+				currentTrigger.removeEventListener('mouseleave', triggerMouseLeave);
+			}
 		};
 	}
-
-	private hoverCleanup?: () => void;
 
 	private unregisterClosePopoverListeners() {
 		// Remove all possible listeners
