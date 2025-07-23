@@ -6,7 +6,7 @@ export interface CompanyConfig {
 	color?: string;
 	logo?: string;
 	url?: string;
-	file: TFile;
+	file?: TFile;
 }
 
 interface CompanyState {
@@ -95,7 +95,7 @@ export class CompanyConfigModal extends Modal {
 
 		// File path info
 		header.createEl("span", {
-			text: company.file.path,
+			text: company.file?.path || "New Company",
 			cls: "company-config-file-path"
 		});
 
@@ -334,7 +334,7 @@ export class CompanyConfigModal extends Modal {
 		section.createEl("h4", { text: `${company.name} - Homepage` });
 
 		const inputContainer = section.createDiv({ cls: "company-config-input-container" });
-		inputContainer.createEl("label", { text: "Homepage URLß" });
+		inputContainer.createEl("label", { text: "Homepage URL" });
 
 		const urlInput = inputContainer.createEl("input", {
 			type: "text",
@@ -531,10 +531,12 @@ export class CompanyConfigModal extends Modal {
 					const filePath = `${assetsPath}/${fileName}`;
 					await this.app.vault.createBinary(filePath, uint8Array);
 
-					const state = this.companyStates.get(company.name)!;
-					state.currentConfig.logo = `![Company Logo](${filePath})`;
-					state.hasUnsavedChanges = true;
-					this.onOpen(); // Refresh to show changes
+					const state = this.companyStates.get(company.name);
+					if (state) {
+						state.currentConfig.logo = `![Company Logo](${filePath})`;
+						state.hasUnsavedChanges = true;
+						this.onOpen(); // Refresh to show changes
+					}
 				}
 			};
 
@@ -547,17 +549,53 @@ export class CompanyConfigModal extends Modal {
 	}
 
 	private handleCustomUrl(company: CompanyConfig) {
-		const url = prompt("Enter image URL:", "https://example.com/logo.png");
-		if (url && url.trim()) {
-			const state = this.companyStates.get(company.name)!;
-			state.currentConfig.logo = `![Company Logo](${url.trim()})`;
-			state.hasUnsavedChanges = true;
-			this.onOpen(); // Refresh to show changes
-		}
+		// Create a simple input modal
+		const modal = new Modal(this.app);
+		modal.titleEl.setText("Enter Image URL");
+
+		const inputContainer = modal.contentEl.createDiv();
+		inputContainer.createEl("label", { text: "Image URL:" });
+		const urlInput = inputContainer.createEl("input", {
+			type: "text",
+			placeholder: "https://example.com/logo.png",
+			attr: { style: "width: 100%; margin: 10px 0;" }
+		});
+
+		const buttonContainer = modal.contentEl.createDiv({ attr: { style: "text-align: right; margin-top: 15px;" } });
+
+		const cancelBtn = buttonContainer.createEl("button", { text: "Cancel" });
+		cancelBtn.style.marginRight = "10px";
+		cancelBtn.onclick = () => modal.close();
+
+		const okBtn = buttonContainer.createEl("button", { text: "OK", cls: "mod-cta" });
+		okBtn.onclick = () => {
+			const url = urlInput.value.trim();
+			if (url) {
+				const state = this.companyStates.get(company.name);
+				if (state) {
+					state.currentConfig.logo = `![Company Logo](${url})`;
+					state.hasUnsavedChanges = true;
+					this.onOpen(); // Refresh to show changes
+				}
+			}
+			modal.close();
+		};
+
+		// Focus input and handle Enter key
+		urlInput.focus();
+		urlInput.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				okBtn.click();
+			}
+		});
+
+		modal.open();
 	}
 
 	private handleDefaultIcon(company: CompanyConfig) {
-		const state = this.companyStates.get(company.name)!;
+		const state = this.companyStates.get(company.name);
+		if (!state) return;
+
 		state.currentConfig.logo = `![Company Logo](${this.DEFAULT_ICON})`;
 		state.hasUnsavedChanges = true;
 		this.onOpen(); // Refresh to show changes
@@ -618,19 +656,29 @@ export class CompanyConfigModal extends Modal {
 
 	private generateFaviconUrl(companyUrl: string): string {
 		try {
-			const url = new URL(companyUrl);
+			// Ensure URL has protocol
+			const urlToProcess = companyUrl.startsWith('http') ? companyUrl : `https://${companyUrl}`;
+			const url = new URL(urlToProcess);
 			return `https://www.google.com/s2/favicons?sz=96&domain_url=${encodeURIComponent(url.origin)}`;
 		} catch {
-			return `https://www.google.com/s2/favicons?sz=96&domain_url=${encodeURIComponent(companyUrl)}`;
+			// Fallback: clean the URL and try with https
+			const cleanUrl = companyUrl.replace(/^(https?:\/\/)?(www\.)?/, '');
+			return `https://www.google.com/s2/favicons?sz=96&domain_url=${encodeURIComponent(`https://${cleanUrl}`)}`;
 		}
 	}
 
 	private isValidUrl(string: string): boolean {
+		if (!string || string.trim() === "") return false;
+
 		try {
-			new URL(string);
+			// Try with https:// prefix if no protocol
+			const urlToTest = string.startsWith('http') ? string : `https://${string}`;
+			new URL(urlToTest);
 			return true;
 		} catch {
-			return false;
+			// Try with just the domain pattern
+			const domainPattern = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}\.?)+$/;
+			return domainPattern.test(string.replace(/^www\./, ''));
 		}
 	}
 
@@ -676,7 +724,8 @@ export class CompanyConfigModal extends Modal {
 	}
 
 	private cancelCompany(companyName: string) {
-		const state = this.companyStates.get(companyName)!;
+		const state = this.companyStates.get(companyName);
+		if (!state) return;
 
 		// Revert changes
 		state.currentConfig = { ...state.originalConfig };
@@ -709,7 +758,7 @@ export class CompanyConfigModal extends Modal {
 			color: "",
 			logo: "",
 			url: "",
-			file: null as any // Will be created when saved
+			file: undefined // Will be created when saved
 		};
 
 		// Add to companies list temporarily
@@ -818,6 +867,9 @@ export class CompanyConfigModal extends Modal {
 	}
 
 	private async saveCompanyToFile(company: CompanyConfig): Promise<void> {
+		if (!company.file) {
+			throw new Error("Cannot save company without file");
+		}
 		const fileContent = await this.app.vault.read(company.file);
 
 		// Split content into frontmatter and body
@@ -891,7 +943,9 @@ export class CompanyConfigModal extends Modal {
 
 		// Combine frontmatter and body
 		const newContent = newFrontmatter ? `${newFrontmatter}\n\n${bodyContent}` : bodyContent;
-		await this.app.vault.modify(company.file, newContent);
+		if (company.file) {
+			await this.app.vault.modify(company.file, newContent);
+		}
 	}
 
 	onClose() {

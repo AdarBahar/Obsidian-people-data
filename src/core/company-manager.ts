@@ -130,6 +130,9 @@ export class CompanyManager {
 	 */
 	async updateCompanyConfig(config: CompanyConfig): Promise<void> {
 		const file = config.file;
+		if (!file) {
+			throw new Error("Cannot update company config without file");
+		}
 		const content = await this.app.vault.read(file);
 		
 		// Parse existing frontmatter
@@ -195,7 +198,9 @@ export class CompanyManager {
 		}
 
 		const newContent = newFrontmatter + bodyContent;
-		await this.app.vault.modify(file, newContent);
+		if (file) {
+			await this.app.vault.modify(file, newContent);
+		}
 	}
 
 	/**
@@ -207,6 +212,9 @@ export class CompanyManager {
 			throw new Error(`Company "${companyName}" not found`);
 		}
 
+		if (!config.file) {
+			throw new Error("Cannot delete company config without file");
+		}
 		await this.app.vault.delete(config.file);
 		
 		// Refresh definitions
