@@ -22,26 +22,23 @@ export class AboutPeopleMetadataModal extends Modal {
 		// Header Section
 		this.createHeader(container);
 
-		// Main Content Container
-		const mainContent = container.createDiv({ cls: "about-modal-content" });
-
 		// Creator Information
-		this.createCreatorSection(mainContent);
+		this.createCreatorSection(container);
 
 		// Plugin Objectives
-		this.createObjectivesSection(mainContent);
+		this.createObjectivesSection(container);
 
 		// Core Features
-		this.createFeaturesSection(mainContent);
+		this.createFeaturesSection(container);
 
 		// Advanced Features
-		this.createAdvancedFeaturesSection(mainContent);
+		this.createAdvancedFeaturesSection(container);
 
 		// Resources & Links
-		this.createResourcesSection(mainContent);
+		this.createResourcesSection(container);
 
 		// Version Information
-		this.createVersionSection(mainContent);
+		this.createVersionSection(container);
 	}
 
 	private createHeader(container: HTMLElement) {

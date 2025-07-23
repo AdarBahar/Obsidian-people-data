@@ -949,21 +949,24 @@
 
 /* About People Metadata Modal Styles */
 .about-people-metadata-modal {
-	padding: 0 !important;
+	padding: var(--size-4-4) var(--size-4-6) !important;
+	overflow-y: auto !important;
+	overflow-x: hidden !important;
 }
 
 .about-people-metadata-modal .modal-content {
 	padding: 0 !important;
 	margin: 0 !important;
-	height: 100%;
-	overflow: hidden;
+	height: auto !important;
+	overflow: visible !important;
 }
 
 .about-modal-header {
 	background: var(--background-primary);
-	padding: var(--size-4-6) var(--size-4-6) var(--size-4-4);
+	padding: 0 0 var(--size-4-4) 0;
 	border-bottom: 1px solid var(--background-modifier-border);
 	text-align: center;
+	margin-bottom: var(--size-4-4);
 }
 
 .about-modal-title {
@@ -980,13 +983,6 @@
 	line-height: 1.4;
 }
 
-.about-modal-content {
-	padding: var(--size-4-4) var(--size-4-6);
-	height: calc(100% - 120px);
-	overflow-y: auto;
-	overflow-x: hidden;
-}
-
 .about-modal-section {
 	margin-bottom: var(--size-4-6);
 }
@@ -998,6 +994,11 @@
 	color: var(--text-normal);
 	border-bottom: 1px solid var(--background-modifier-border);
 	padding-bottom: var(--size-2-1);
+}
+
+.about-modal-section:last-child {
+	margin-bottom: var(--size-4-4);
+	padding-bottom: var(--size-2-2);
 }
 
 .creator-info {
@@ -1104,6 +1105,7 @@
 	border-top: 1px solid var(--background-modifier-border);
 	padding-top: var(--size-4-3);
 	margin-top: var(--size-4-6);
+	margin-bottom: 0;
 }
 
 .version-info {
