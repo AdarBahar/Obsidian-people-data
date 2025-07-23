@@ -195,12 +195,35 @@ export class DefinitionPopover extends Component {
 		// Company info on the right side of header
 		if (person.companyName || person.companyLogo) {
 			const companyEl = headerEl.createDiv({ cls: "people-metadata-company-info" });
+
+			// Company name with favicon
+			if (person.companyName) {
+				const companyNameContainer = companyEl.createDiv({ cls: "people-metadata-company-name-container" });
+
+				// Add favicon if company has URL
+				if (person.companyUrl) {
+					const faviconEl = companyNameContainer.createEl("img", {
+						cls: "people-metadata-company-favicon",
+						attr: {
+							src: this.generateFaviconUrl(person.companyUrl),
+							alt: `${person.companyName} favicon`,
+							title: `${person.companyName} favicon`
+						}
+					});
+
+					// Fallback for failed favicon
+					faviconEl.onerror = () => {
+						faviconEl.style.display = 'none';
+					};
+				}
+
+				companyNameContainer.createSpan({ text: person.companyName, cls: "people-metadata-company-name" });
+			}
+
+			// Company logo (separate from favicon)
 			if (person.companyLogo) {
 				const logoEl = companyEl.createDiv({ cls: "people-metadata-company-logo" });
 				this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
-			}
-			if (person.companyName) {
-				companyEl.createDiv({ text: person.companyName, cls: "people-metadata-company-name" });
 			}
 		}
 
@@ -289,12 +312,35 @@ export class DefinitionPopover extends Component {
 			// Add company info to tab content
 			if (person.companyName || person.companyLogo) {
 				const companyEl = tabContent.createDiv({ cls: "people-metadata-company-info" });
+
+				// Company name with favicon
+				if (person.companyName) {
+					const companyNameContainer = companyEl.createDiv({ cls: "people-metadata-company-name-container" });
+
+					// Add favicon if company has URL
+					if (person.companyUrl) {
+						const faviconEl = companyNameContainer.createEl("img", {
+							cls: "people-metadata-company-favicon",
+							attr: {
+								src: this.generateFaviconUrl(person.companyUrl),
+								alt: `${person.companyName} favicon`,
+								title: `${person.companyName} favicon`
+							}
+						});
+
+						// Fallback for failed favicon
+						faviconEl.onerror = () => {
+							faviconEl.style.display = 'none';
+						};
+					}
+
+					companyNameContainer.createSpan({ text: person.companyName, cls: "people-metadata-company-name" });
+				}
+
+				// Company logo (separate from favicon)
 				if (person.companyLogo) {
 					const logoEl = companyEl.createDiv({ cls: "people-metadata-company-logo" });
 					this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
-				}
-				if (person.companyName) {
-					companyEl.createDiv({ text: person.companyName, cls: "people-metadata-company-name" });
 				}
 			}
 
@@ -403,6 +449,19 @@ export class DefinitionPopover extends Component {
 
 		// Add title attribute for accessibility
 		defaultLogo.title = companyName ? `${companyName} (default logo)` : "Company (default logo)";
+	}
+
+	private generateFaviconUrl(companyUrl: string): string {
+		try {
+			// Ensure URL has protocol
+			const urlToProcess = companyUrl.startsWith('http') ? companyUrl : `https://${companyUrl}`;
+			const url = new URL(urlToProcess);
+			return `https://www.google.com/s2/favicons?sz=16&domain_url=${encodeURIComponent(url.origin)}`;
+		} catch {
+			// Fallback: clean the URL and try with https
+			const cleanUrl = companyUrl.replace(/^(https?:\/\/)?(www\.)?/, '');
+			return `https://www.google.com/s2/favicons?sz=16&domain_url=${encodeURIComponent(`https://${cleanUrl}`)}`;
+		}
 	}
 
 	// Internal links do not work properly in the popover

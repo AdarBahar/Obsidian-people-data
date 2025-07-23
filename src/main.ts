@@ -109,6 +109,28 @@ export default class NoteDefinition extends Plugin {
 				modal.open();
 			}
 		});
+
+		this.addCommand({
+			id: "force-cleanup-tooltips",
+			name: "Force cleanup stuck tooltips",
+			callback: () => {
+				try {
+					// Force cleanup of all tooltips
+					const { cleanupDefinitionPopover } = require('./editor/definition-popover');
+					cleanupDefinitionPopover();
+
+					// Additional manual cleanup
+					document.querySelectorAll('.people-metadata-definition-popover').forEach(el => el.remove());
+					const popoverById = document.getElementById('definition-popover');
+					if (popoverById) popoverById.remove();
+					document.querySelectorAll('[id*="definition-popover"]').forEach(el => el.remove());
+
+					new Notice("Tooltips cleaned up successfully!");
+				} catch (error) {
+					new Notice("Error cleaning up tooltips: " + error.message);
+				}
+			}
+		});
 	}
 
 	registerEvents() {

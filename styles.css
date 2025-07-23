@@ -57,6 +57,20 @@
 	flex-shrink: 0;
 }
 
+.people-metadata-company-name-container {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	order: 1;
+}
+
+.people-metadata-company-favicon {
+	width: 16px;
+	height: 16px;
+	border-radius: 2px;
+	flex-shrink: 0;
+}
+
 .people-metadata-company-logo {
 	order: 2;
 }
