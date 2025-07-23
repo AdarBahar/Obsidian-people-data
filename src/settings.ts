@@ -334,5 +334,9 @@ export class SettingsTab extends PluginSettingTab {
 }
 
 export function getSettings(): Settings {
+	if (!PluginContext.isInitialized()) {
+		// Return default settings if context not initialized
+		return DEFAULT_SETTINGS as Settings;
+	}
 	return PluginContext.getInstance().settings;
 }

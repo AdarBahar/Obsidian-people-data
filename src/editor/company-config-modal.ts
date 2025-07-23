@@ -20,6 +20,7 @@ export class CompanyConfigModal extends Modal {
 	companies: CompanyConfig[];
 	companyStates: Map<string, CompanyState> = new Map();
 	onSave: () => void;
+	private documentClickHandlers: ((e: Event) => void)[] = [];
 
 	// Default company icon as base64 SVG
 	private readonly DEFAULT_ICON = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gU3ZnIFZlY3RvciBJY29ucyA6IGh0dHA6Ly93d3cub25saW5ld2ViZm9udHMuY29tL2ljb24gLS0+DQo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDEuMS8vRU4iICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiPg0KPHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgZW5hYmxlLWJhY2tncm91bmQ9Im5ldyAwIDAgMjU2IDI1NiIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8bWV0YWRhdGE+IFN2ZyBWZWN0b3IgSWNvbnMgOiBodHRwOi8vd3d3Lm9ubGluZXdlYmZvbnRzLmNvbS9pY29uIDwvbWV0YWRhdGE+DQo8Zz48Zz48cGF0aCBmaWxsPSIjMDAwMDAwIiBkPSJNOTQuOSwxMzYuM3Y5LjFjMy40LTAuNyw3LTEuMywxMC44LTJjNC0wLjcsOC4yLTEuNSwxMi42LTIuNHYtMTAuNmMtNC40LDEuMS04LjYsMi4yLTEyLjYsMy4yQzEwMS45LDEzNC42LDk4LjMsMTM1LjUsOTQuOSwxMzYuM3oiLz48cGF0aCBmaWxsPSIjMDAwMDAwIiBkPSJNOTQuOSwxNjIuN3Y5LjFoMjMuNHYtMTAuNmMtNC40LDAuMy04LjYsMC42LTEyLjYsMC44QzEwMS45LDE2Mi4yLDk4LjMsMTYyLjQsOTQuOSwxNjIuN3oiLz48cGF0aCBmaWxsPSIjMDAwMDAwIiBkPSJNOTQuOSwxNDkuNHY5LjFjMy40LTAuMyw3LTAuNywxMC44LTFjNC0wLjQsOC4yLTAuOCwxMi42LTEuMnYtMTAuNmMtNC40LDAuNy04LjYsMS40LTEyLjYsMkMxMDEuOSwxNDguMyw5OC4zLDE0OC45LDk0LjksMTQ5LjR6Ii8+PHBhdGggZmlsbD0iIzAwMDAwMCIgZD0iTTk0LjksMTIzLjR2OS4xYzMuNC0xLDctMiwxMC44LTNjNC0xLjEsOC4yLTIuMywxMi42LTMuNXYtMTAuNmMtNC40LDEuNS04LjYsMy0xMi42LDQuNEMxMDEuOSwxMjAuOSw5OC4zLDEyMi4yLDk0LjksMTIzLjR6Ii8+PHBhdGggZmlsbD0iIzAwMDAwMCIgZD0iTTEyOCwxMEM2Mi44LDEwLDEwLDYyLjgsMTAsMTI4YzAsNjUuMiw1Mi44LDExOCwxMTgsMTE4YzY1LjIsMCwxMTgtNTIuOCwxMTgtMTE4QzI0Niw2Mi44LDE5My4yLDEwLDEyOCwxMHogTTEyOCwyNDAuNWMtNjIuMSwwLTExMi41LTUwLjQtMTEyLjUtMTEyLjVDMTUuNSw2NS45LDY1LjksMTUuNSwxMjgsMTUuNWM2Mi4xLDAsMTEyLjUsNTAuNCwxMTIuNSwxMTIuNUMyNDAuNSwxOTAuMSwxOTAuMSwyNDAuNSwxMjgsMjQwLjV6Ii8+PHBhdGggZmlsbD0iIzAwMDAwMCIgZD0iTTE2NS40LDgwLjZMMTY1LjQsODAuNmwtMTEuOS03LjlsLTQuMywybC0zNy43LDE3LjZsLTEuNywwLjh2MTRMODcuMywxMTVsLTIsMC43djUwLjdoLTEuOXY2aDhWMTIwbDMxLjYtMTF2NjIuOWgyMi42di02aC00Ljd2LTU4bC0xMS44LTcuM2wtMC40LDAuMWwtMC4xLDBsLTMuNSwxLjJsLTkuMSwzLjJWOTdsMzEuNi0xNC44djg5LjlIMTcwdi02aC00LjZWODAuNnoiLz48L2c+PC9nPg0KPC9zdmc+";
@@ -292,11 +293,18 @@ export class CompanyConfigModal extends Modal {
 		};
 
 		// Close dropdown when clicking outside
-		document.addEventListener('click', (e) => {
+		const outsideClickHandler = (e: Event) => {
 			if (!dropdownContainer.contains(e.target as Node)) {
 				optionsList.style.display = "none";
 			}
-		});
+		};
+		document.addEventListener('click', outsideClickHandler);
+
+		// Store handler for cleanup
+		if (!this.documentClickHandlers) {
+			this.documentClickHandlers = [];
+		}
+		this.documentClickHandlers.push(outsideClickHandler);
 
 		// Show/hide inputs based on radio selection
 		const updateColorInputs = () => {
@@ -951,5 +959,11 @@ export class CompanyConfigModal extends Modal {
 	onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
+
+		// Clean up document event listeners
+		this.documentClickHandlers.forEach(handler => {
+			document.removeEventListener('click', handler);
+		});
+		this.documentClickHandlers = [];
 	}
 }

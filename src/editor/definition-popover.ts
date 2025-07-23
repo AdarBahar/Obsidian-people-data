@@ -82,10 +82,27 @@ export class DefinitionPopover extends Component {
 	}
 
 	cleanUp() {
+		// Force close any mounted popover first
+		this.unmount();
+
+		// Clean up any remaining popover elements by class
 		const popoverEls = document.getElementsByClassName(DEF_POPOVER_ID);
-		for (let i = 0; i < popoverEls.length; i++) {
+		for (let i = popoverEls.length - 1; i >= 0; i--) {
 			popoverEls[i].remove();
 		}
+
+		// Clean up any stuck popovers by ID
+		const popoverById = document.getElementById(DEF_POPOVER_ID);
+		if (popoverById) {
+			popoverById.remove();
+		}
+
+		// Clean up any popovers with the main class
+		const popoversByClass = document.querySelectorAll('.people-metadata-definition-popover');
+		popoversByClass.forEach(el => el.remove());
+
+		// Force cleanup of any event listeners
+		this.unregisterClosePopoverListeners();
 	}
 
 	close = () => {
@@ -93,23 +110,29 @@ export class DefinitionPopover extends Component {
 	}
 
 	clickClose = (event: Event) => {
-		const settings = getSettings();
+		try {
+			const settings = getSettings();
 
-		// For click trigger mode, check if clicking on the same element that triggered the popover
-		if (settings.popoverEvent === PopoverEventSettings.Click) {
-			const target = event.target as HTMLElement;
-			const defElement = target.closest('.people-metadata-def-decoration');
+			// For click trigger mode, check if clicking on the same element that triggered the popover
+			if (settings.popoverEvent === PopoverEventSettings.Click) {
+				const target = event.target as HTMLElement;
+				const defElement = target.closest('.people-metadata-def-decoration');
 
-			// If clicking on a person name element, let the trigger handle it (toggle behavior)
-			if (defElement) {
+				// If clicking on a person name element, let the trigger handle it (toggle behavior)
+				if (defElement) {
+					return;
+				}
+			}
+
+			// For hover trigger with click dismiss, or click outside in click trigger mode
+			if (this.mountedPopover?.matches(":hover")) {
 				return;
 			}
+		} catch (error) {
+			// If settings access fails, just close the popover
+			logError("Error accessing settings in clickClose, closing popover: " + error.message);
 		}
 
-		// For hover trigger with click dismiss, or click outside in click trigger mode
-		if (this.mountedPopover?.matches(":hover")) {
-			return;
-		}
 		this.close();
 	}
 
@@ -587,4 +610,15 @@ export function initDefinitionPopover(plugin: Plugin) {
 
 export function getDefinitionPopover() {
 	return definitionPopover;
+}
+
+export function cleanupDefinitionPopover() {
+	if (definitionPopover) {
+		definitionPopover.cleanUp();
+		definitionPopover = undefined as any;
+	}
+
+	// Force cleanup of any remaining popovers
+	const allPopovers = document.querySelectorAll('.people-metadata-definition-popover, #definition-popover');
+	allPopovers.forEach(el => el.remove());
 }

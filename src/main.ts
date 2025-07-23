@@ -418,7 +418,9 @@ Notes about the second person.
 	}
 
 	onunload() {
-		getDefinitionPopover().cleanUp();
+		// Clean up popovers and UI components
+		const { cleanupDefinitionPopover } = require('./editor/definition-popover');
+		cleanupDefinitionPopover();
 
 		// Clean up dynamic styles
 		if (this.dynamicStylesEl) {
