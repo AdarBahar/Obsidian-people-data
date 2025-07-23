@@ -90,15 +90,9 @@ function getNormalDecorationSpan(container: HTMLElement, phraseInfo: PhraseInfo,
 		text: currText.slice(phraseInfo.from, phraseInfo.to),
 	});
 	
-	// Add mouse leave listener only if hover trigger with mouse exit dismiss
-	const settings = getSettings();
-	if (settings.popoverEvent === PopoverEventSettings.Hover &&
-		settings.defPopoverConfig.popoverDismissEvent === PopoverDismissType.MouseExit) {
-		const previewService = DefinitionPreviewService.getInstance();
-		span.addEventListener("mouseleave", () => {
-			previewService.closeDefPreview();
-		});
-	}
+	// Note: Mouse leave handling for hover trigger is now managed by the popover itself
+	// to allow proper interaction with tooltip content (tabs, links, etc.)
+	// The popover will handle the hover state coordination between trigger and tooltip
 	
 	return span;
 }

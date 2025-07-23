@@ -23,10 +23,7 @@ export function getDecorationAttrs(phrase: string, companyName?: string): { [key
 	} else {
 		// Hover trigger
 		attributes.onmouseenter = triggerFunc;
-		// Only add mouseleave if dismiss is set to mouse exit
-		if (settings.defPopoverConfig.popoverDismissEvent === PopoverDismissType.MouseExit) {
-			attributes.onmouseleave = leaveFunc;
-		}
+		// Note: mouseleave is now handled by the popover itself for better interaction
 	}
 	if (!settings.enableSpellcheck) {
 		attributes.spellcheck = "false";

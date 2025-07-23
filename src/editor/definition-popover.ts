@@ -572,9 +572,73 @@ export class DefinitionPopover extends Component {
 				   settings.defPopoverConfig.popoverDismissEvent === PopoverDismissType.Click) {
 			// Hover trigger with click dismiss: click anywhere to dismiss
 			this.getActiveView()?.containerEl.addEventListener("click", this.clickClose);
+		} else if (settings.popoverEvent === PopoverEventSettings.Hover &&
+				   settings.defPopoverConfig.popoverDismissEvent === PopoverDismissType.MouseExit) {
+			// Hover trigger with mouse exit dismiss: add proper hover handling
+			this.setupHoverDismiss();
 		}
-		// Note: Mouse exit dismiss is handled in the span elements themselves
 	}
+
+	private setupHoverDismiss() {
+		if (!this.mountedPopover) return;
+
+		let isHoveringPopover = false;
+		let isHoveringTrigger = false;
+		let dismissTimeout: NodeJS.Timeout | null = null;
+
+		const clearDismissTimeout = () => {
+			if (dismissTimeout) {
+				clearTimeout(dismissTimeout);
+				dismissTimeout = null;
+			}
+		};
+
+		const scheduleDismiss = () => {
+			clearDismissTimeout();
+			dismissTimeout = setTimeout(() => {
+				if (!isHoveringPopover && !isHoveringTrigger) {
+					this.close();
+				}
+			}, 100); // Small delay to allow mouse movement between elements
+		};
+
+		// Handle popover hover
+		this.mountedPopover.addEventListener('mouseenter', () => {
+			isHoveringPopover = true;
+			clearDismissTimeout();
+		});
+
+		this.mountedPopover.addEventListener('mouseleave', () => {
+			isHoveringPopover = false;
+			scheduleDismiss();
+		});
+
+		// Find and handle trigger element hover
+		const triggerElements = document.querySelectorAll('.people-metadata-def-decoration');
+		triggerElements.forEach(trigger => {
+			trigger.addEventListener('mouseenter', () => {
+				isHoveringTrigger = true;
+				clearDismissTimeout();
+			});
+
+			trigger.addEventListener('mouseleave', () => {
+				isHoveringTrigger = false;
+				scheduleDismiss();
+			});
+		});
+
+		// Store cleanup function for later
+		this.hoverCleanup = () => {
+			clearDismissTimeout();
+			// Remove listeners from trigger elements
+			triggerElements.forEach(trigger => {
+				trigger.removeEventListener('mouseenter', () => {});
+				trigger.removeEventListener('mouseleave', () => {});
+			});
+		};
+	}
+
+	private hoverCleanup?: () => void;
 
 	private unregisterClosePopoverListeners() {
 		// Remove all possible listeners
@@ -587,6 +651,12 @@ export class DefinitionPopover extends Component {
 		const scroller = this.getCmScroller();
 		if (scroller) {
 			scroller.removeEventListener("scroll", this.close);
+		}
+
+		// Clean up hover listeners
+		if (this.hoverCleanup) {
+			this.hoverCleanup();
+			this.hoverCleanup = undefined;
 		}
 	}
 
