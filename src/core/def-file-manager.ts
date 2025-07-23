@@ -49,7 +49,14 @@ export class DefManager {
 			PluginContext.getInstance().definitions.global = this.globalDefs;
 		}
 
-		this.loadDefinitions();
+		// Delay loading definitions until app is ready
+		if (this.app.workspace.layoutReady) {
+			this.loadDefinitions();
+		} else {
+			this.app.workspace.onLayoutReady(() => {
+				this.loadDefinitions();
+			});
+		}
 	}
 
 	addDefFile(file: TFile) {
@@ -265,27 +272,38 @@ export class DefManager {
 	private async loadGlobals() {
 		const retry = useRetry();
 		let globalFolder: TFolder | null = null;
-		// Retry is needed here as getFolderByPath may return null when being called on app startup
-		await retry.exec(() => {
-			globalFolder = this.app.vault.getFolderByPath(this.getGlobalDefFolder());
-			if (!globalFolder) {
-				retry.setShouldRetry();
-			}
-		});
+		const folderPath = this.getGlobalDefFolder();
 
-		if (!globalFolder) {
-			logWarn("Global people folder not found, unable to load global people");
-			return
+		try {
+			// Retry is needed here as getFolderByPath may return null when being called on app startup
+			await retry.exec(() => {
+				globalFolder = this.app.vault.getFolderByPath(folderPath);
+				if (!globalFolder) {
+					retry.setShouldRetry();
+				}
+			});
+		} catch (error) {
+			logWarn(`Failed to access folder "${folderPath}" after retries: ${error.message}`);
+			return;
 		}
 
-		// Recursively load files within the global people folder
-		const definitions = await this.parseFolder(globalFolder);
-		definitions.forEach(def => {
-			this.globalDefs.set(def);
-		});
+		if (!globalFolder) {
+			logWarn(`Global people folder "${folderPath}" not found, unable to load global people`);
+			return;
+		}
 
-		this.buildPrefixTree();
-		this.lastUpdate = Date.now();
+		try {
+			// Recursively load files within the global people folder
+			const definitions = await this.parseFolder(globalFolder);
+			definitions.forEach(def => {
+				this.globalDefs.set(def);
+			});
+
+			this.buildPrefixTree();
+			this.lastUpdate = Date.now();
+		} catch (error) {
+			logWarn(`Error parsing folder "${folderPath}": ${error.message}`);
+		}
 	}
 
 	private async buildPrefixTree() {

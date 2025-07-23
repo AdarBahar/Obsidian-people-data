@@ -11,15 +11,25 @@ export function useRetry(retryCount?: number) {
 
 	async function exec<T>(func: () => T): Promise<T> {
 		while (currRetry < maxRetries) {
-			const output = func();
-			if (!shouldRetry) {
-				return output;
+			try {
+				const output = func();
+				if (!shouldRetry) {
+					return output;
+				}
+				shouldRetry = false;
+				currRetry++;
+				if (currRetry < maxRetries) {
+					await sleep(RETRY_INTERVAL);
+				}
+			} catch (error) {
+				currRetry++;
+				if (currRetry >= maxRetries) {
+					throw new Error(`Failed to exec function after ${maxRetries} retries: ${error.message}`);
+				}
+				await sleep(RETRY_INTERVAL);
 			}
-			shouldRetry = false;
-			currRetry++;
-			await sleep(RETRY_INTERVAL);
 		}
-		throw new Error("Failed to exec function, hit max retries");
+		throw new Error(`Failed to exec function, hit max retries (${maxRetries})`);
 	}
 
 	function setShouldRetry() {

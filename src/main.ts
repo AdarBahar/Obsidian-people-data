@@ -56,7 +56,14 @@ export default class NoteDefinition extends Plugin {
 		this.registerMarkdownPostProcessor(postProcessor);
 
 		this.initDynamicStyles();
-		this.fileExplorerDeco.run();
+
+		// Delay file explorer decoration until workspace is ready
+		this.app.workspace.onLayoutReady(() => {
+			// Add a small delay to ensure all views are loaded
+			setTimeout(() => {
+				this.fileExplorerDeco.run();
+			}, 1000);
+		});
 	}
 
 	async saveSettings() {

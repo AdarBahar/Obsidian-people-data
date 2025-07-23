@@ -36,14 +36,19 @@ export class FileExplorerDecoration {
 					return;
 				}
 			} catch (e) {
-				logError(e);
+				logError(`File explorer access attempt ${this.retryCount + 1} failed: ${e.message}`);
 			}
 
 			this.retryCount++;
-			await sleep(RETRY_INTERVAL);
+			if (this.retryCount < MAX_RETRY) {
+				await sleep(RETRY_INTERVAL);
+			}
 		}
 
-		logError("Failed to access file explorer view after maximum retries");
+		// Don't log error if workspace isn't ready yet - this is normal during startup
+		if (this.app.workspace && this.app.workspace.layoutReady) {
+			logError("Failed to access file explorer view after maximum retries");
+		}
 	}
 
 	private exec(): boolean {
