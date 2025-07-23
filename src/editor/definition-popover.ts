@@ -1,5 +1,6 @@
 import { App, Component, MarkdownRenderer, MarkdownView, normalizePath, Plugin } from "obsidian";
 import { PersonMetadata } from "src/core/model";
+import { PluginContext } from "src/core/plugin-context";
 // import { Definition } from "src/core/model"; // Removed as it's no longer used
 import { getSettings, PopoverDismissType, PopoverEventSettings } from "src/settings";
 import { logError } from "src/util/log";
@@ -111,6 +112,13 @@ export class DefinitionPopover extends Component {
 
 	clickClose = (event: Event) => {
 		try {
+			// Double-check PluginContext before accessing settings
+			if (!PluginContext.isInitialized()) {
+				// Context not ready, just close the popover
+				this.close();
+				return;
+			}
+
 			const settings = getSettings();
 
 			// For click trigger mode, check if clicking on the same element that triggered the popover
@@ -129,8 +137,8 @@ export class DefinitionPopover extends Component {
 				return;
 			}
 		} catch (error) {
-			// If settings access fails, just close the popover
-			logError("Error accessing settings in clickClose, closing popover: " + error.message);
+			// If any error occurs, just close the popover
+			console.warn("Error in clickClose, closing popover:", error.message);
 		}
 
 		this.close();

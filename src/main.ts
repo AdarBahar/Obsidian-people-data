@@ -149,7 +149,18 @@ export default class NoteDefinition extends Plugin {
 					if (popoverById) popoverById.remove();
 					document.querySelectorAll('[id*="definition-popover"]').forEach(el => el.remove());
 
-					new Notice("Tooltips cleaned up successfully!");
+					// Remove any stuck event listeners by cloning elements
+					const containers = document.querySelectorAll('.markdown-preview-view, .markdown-source-view');
+					containers.forEach(container => {
+						try {
+							const clone = container.cloneNode(true);
+							container.parentNode?.replaceChild(clone, container);
+						} catch (e) {
+							// Ignore cloning errors
+						}
+					});
+
+					new Notice("Tooltips and event listeners cleaned up successfully!");
 				} catch (error) {
 					new Notice("Error cleaning up tooltips: " + error.message);
 				}
