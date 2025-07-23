@@ -58,18 +58,35 @@ export default class NoteDefinition extends Plugin {
 		this.initDynamicStyles();
 
 		// Delay file explorer decoration until workspace is ready
+		// This is a non-critical feature that adds visual tags to files
 		this.app.workspace.onLayoutReady(() => {
 			// Add a small delay to ensure all views are loaded
 			setTimeout(() => {
-				this.fileExplorerDeco.run();
-			}, 1000);
+				try {
+					// Only run if enabled in settings
+					if (this.context.settings.enableFileExplorerTags) {
+						this.fileExplorerDeco.run();
+					}
+				} catch (error) {
+					// File explorer decoration is non-critical, fail silently
+				}
+			}, 2000); // Increased delay to 2 seconds for better reliability
 		});
 	}
 
 	async saveSettings() {
 		await this.saveData(this.context.settings);
 		this.context.updateSettings(this.context.settings);
-		this.fileExplorerDeco.run();
+
+		// Only run file explorer decoration if enabled
+		if (this.context.settings.enableFileExplorerTags) {
+			try {
+				this.fileExplorerDeco.run();
+			} catch (error) {
+				// File explorer decoration is non-critical, fail silently
+			}
+		}
+
 		await this.refreshDefinitions();
 	}
 

@@ -41,6 +41,7 @@ export interface Settings {
 	popoverEvent: PopoverEventSettings;
 	defFileParseConfig: DefFileParseConfig;
 	defPopoverConfig: DefinitionPopoverConfig;
+	enableFileExplorerTags: boolean;
 }
 
 export const DEFAULT_DEF_FOLDER = "people"
@@ -48,6 +49,7 @@ export const DEFAULT_DEF_FOLDER = "people"
 export const DEFAULT_SETTINGS: Partial<Settings> = {
 	enableInReadingView: true,
 	enableSpellcheck: true,
+	enableFileExplorerTags: false, // Disabled by default to prevent errors
 	autoRegisterNewFiles: true,
 	popoverEvent: PopoverEventSettings.Hover,
 	defFileParseConfig: {
@@ -125,6 +127,17 @@ export class SettingsTab extends PluginSettingTab {
 				component.setValue(this.settings.autoRegisterNewFiles ?? true);
 				component.onChange(async (val) => {
 					this.settings.autoRegisterNewFiles = val;
+					await this.saveCallback();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("File explorer tags")
+			.setDesc("Show 'PEOPLE' tags in the file explorer for people files (disable if causing errors)")
+			.addToggle((component) => {
+				component.setValue(this.settings.enableFileExplorerTags ?? false);
+				component.onChange(async value => {
+					this.settings.enableFileExplorerTags = value;
 					await this.saveCallback();
 				});
 			});
