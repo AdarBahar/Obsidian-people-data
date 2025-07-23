@@ -3,7 +3,7 @@
 Augment names in your Obsidian pages with company, position and details.
 A personal tool for managing and looking up people metadata within your notes. Create company profiles, add person details, and get instant previews with company colors and logos.
 
-> **Latest Update**: Major code quality improvements addressing Obsidian team feedback - enhanced performance, better API compliance, and improved architecture.
+> **Latest Update**: Major feature release with Name Auto-completion, Interactive Tooltips, Multi-Company Support, and extensive configuration options. Enhanced UX with proper hover behavior and automatic company color application.
 
 ![Person Tooltip Preview](./img/person-tooltip.png)
 
@@ -23,13 +23,16 @@ A personal tool for managing and looking up people metadata within your notes. C
 ## ✨ Features
 
 - **🏢 Company Management**: Organize people by company with custom colors and logos
-- **💬 Smart Tooltips**: Hover over names to see rich person details
+- **💬 Smart Tooltips**: Hover over names to see rich person details with interactive tabs
 - **➕ Add Person Modal**: User-friendly interface for adding new people
 - **🔄 Auto-Registration**: Automatically set up new files in the People folder
 - **🖼️ Logo Fallback**: Graceful fallback for broken company logos
 - **📱 Mobile Support**: Works seamlessly on both desktop and mobile
 - **🎨 Color Coding**: Assign colors to companies for visual organization
 - **📝 Rich Formatting**: Support for markdown in person descriptions
+- **🔍 Name Auto-completion**: Smart auto-completion with configurable trigger patterns
+- **🏷️ Multi-Company Support**: Handle people working at multiple companies with tabbed interface
+- **⚙️ Extensive Configuration**: Customize tooltips, triggers, and visual appearance
 
 ## 📖 Basic Usage
 
@@ -48,9 +51,14 @@ Options available:
 ### Commands
 
 You may want to assign hotkeys to the commands available for easy access:
-- Add a Person
-- Refresh people
-- Update company colors
+- **Add a Person** - Open the person creation modal
+- **Refresh people** - Reload all people metadata
+- **Update company colors** - Apply company color schemes
+- **Insert name auto-completion trigger** - Insert the trigger pattern for auto-completion
+- **Configure companies** - Open company management interface
+- **Force cleanup stuck tooltips** - Clean up any stuck tooltip elements
+- **Test plugin status** - Check plugin initialization and data status
+- **Refresh all (definitions, colors, UI)** - Comprehensive refresh of all plugin components
 
 ## How it works
 
@@ -170,6 +178,44 @@ Notes about the second person.
 
 This can be disabled in Settings → "Auto-register new files" if you prefer manual control.
 
+## 🔍 Name Auto-completion
+
+The plugin includes a powerful auto-completion system that helps you quickly reference people in your notes.
+
+### How to Use Auto-completion
+
+1. **Type the trigger pattern** (default: `@name:`) in any note
+2. **Start typing** a person's name, company, or position
+3. **Select from suggestions** using arrow keys + Enter or mouse click
+4. **Name is inserted** as clean text (e.g., "John Doe")
+
+### Example Usage
+```
+Type: @name:john
+See: John Doe @ TechCorp (Software Engineer) 5 mentions
+Select: John Doe
+```
+
+### Auto-completion Features
+
+- **Smart Scoring**: Prioritizes exact matches, then partial matches
+- **Rich Suggestions**: Shows name, company, position, and mention counts
+- **Configurable Trigger**: Customize the trigger pattern (e.g., `@name:`, `@person:`, `@`)
+- **Performance Optimized**: Fast filtering with configurable suggestion limits
+- **Keyboard Navigation**: Full keyboard support with arrow keys and Enter
+- **Mouse Support**: Click to select suggestions
+
+### Configuration Options
+
+Access auto-completion settings in **Settings → People Metadata → Auto-completion settings**:
+
+- **Enable/disable auto-completion**: Toggle the feature on/off
+- **Trigger pattern**: Customize what triggers suggestions (default: `@name:`)
+- **Maximum suggestions**: Control how many suggestions to show (3-20)
+- **Show mention counts**: Display how often each person is mentioned
+- **Show company information**: Include company names in suggestions
+- **Show position information**: Include job titles in suggestions
+
 #### Atomic metadata file
 
 An `atomic` metadata file refers to a file that contains only one metadata entry.
@@ -197,6 +243,46 @@ When a company logo image fails to load or is broken, the plugin automatically d
 4. If no company name is available, it shows "CO" as a generic fallback
 
 This ensures that company information is always displayed consistently, even when logo images are unavailable.
+
+## 💬 Smart Tooltips & Configuration
+
+The plugin provides rich, interactive tooltips that display comprehensive person information when you hover over or click on names.
+
+### Tooltip Features
+
+- **Multi-Company Support**: Tabbed interface for people working at multiple companies
+- **Interactive Content**: Click on tabs, links, and other elements within tooltips
+- **Company Information**: Shows company name, logo, and person's role
+- **Rich Formatting**: Supports markdown formatting in person descriptions
+- **Smart Hover Behavior**: Tooltips stay open when interacting with content
+
+### Tooltip Configuration
+
+Access tooltip settings in **Settings → People Metadata**:
+
+#### Trigger Settings
+- **People popover trigger**: Choose between "Hover" or "Click" to show tooltips
+- **People popover dismiss**: Choose between "Mouse exit" or "Click" to hide tooltips
+
+#### Display Settings
+- **Enable in reading view**: Show tooltips in reading mode
+- **Enable spellcheck**: Apply spellcheck to tooltip content
+- **File explorer tags**: Show "PEOPLE" tags in file explorer (optional)
+
+#### Advanced Settings
+- **Popover delay**: Configure delay before showing tooltips (hover mode)
+- **Company colors**: Automatically applied from company file settings
+- **Logo fallback**: Automatic fallback for broken company logos
+
+### Hover Behavior
+
+When using **"Hover" trigger + "Mouse exit" dismiss**:
+- Hover over a person's name → Tooltip appears
+- Move mouse to tooltip → Tooltip stays open for interaction
+- Click on tabs or links → Works seamlessly
+- Move mouse away from both name and tooltip → Tooltip dismisses
+
+This allows you to interact with multi-company tabs and click on links within the tooltip content.
 
 ## Add a Person Modal
 
@@ -276,18 +362,39 @@ Whenever you find that the plugin is not detecting certain people or people file
 
 ### Plugin Not Working?
 1. Make sure you have set a People metadata folder using the right-click menu
-2. Try running the "Refresh people" command
-3. Check that your files have the correct `def-type: consolidated` frontmatter
+2. Try running the **"Test plugin status"** command to check initialization
+3. Run **"Refresh all (definitions, colors, UI)"** for comprehensive refresh
+4. Check that your files have the correct `def-type: consolidated` frontmatter
 
 ### Names Not Being Detected?
 1. Ensure the person's name matches exactly (case-sensitive)
-2. Run "Refresh people" command to reload the metadata
+2. Run **"Refresh people"** command to reload the metadata
 3. Check that the person file is in the correct People folder
+4. Use **"Test plugin status"** to verify how many people files are loaded
 
 ### Company Colors Not Showing?
-1. Run the "Update company colors" command
+1. Run the **"Update company colors"** command
 2. Verify the color property is set correctly in the company file frontmatter
 3. Try using predefined color names instead of hex codes
+4. Company colors are now automatically applied on plugin load
+
+### Auto-completion Not Working?
+1. Check that auto-completion is enabled in **Settings → Auto-completion settings**
+2. Verify the trigger pattern is correct (default: `@name:`)
+3. Ensure you have people files loaded (use **"Test plugin status"**)
+4. Try the **"Insert name auto-completion trigger"** command
+
+### Tooltips Not Interactive?
+1. Check tooltip settings: **Settings → People Metadata**
+2. For interactive tooltips, use **"Hover" trigger + "Mouse exit" dismiss**
+3. Run **"Force cleanup stuck tooltips"** if tooltips get stuck
+4. Restart the plugin if hover behavior seems broken
+
+### General Issues?
+- Use **"Refresh all (definitions, colors, UI)"** for comprehensive refresh
+- Check console (Developer Tools) for error messages
+- Try disabling and re-enabling the plugin
+- Use **"Test plugin status"** to diagnose specific issues
 
 ## 📚 Documentation
 
