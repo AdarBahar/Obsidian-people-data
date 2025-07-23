@@ -301,8 +301,8 @@ export class NameAutoCompletion extends EditorSuggest<AutoCompletionSuggestion> 
 	}
 
 	private getInsertText(person: PersonMetadata): string {
-		// Insert just the name, formatted for linking
-		return `[[${person.fullName}]]`;
+		// Insert just the name without brackets
+		return person.fullName;
 	}
 
 	private getMentionCount(person: PersonMetadata): number {

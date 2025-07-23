@@ -182,7 +182,7 @@ export class DefinitionPopover extends Component {
 		});
 
 		// Company info on the right side of header
-		if (person.companyName || person.companyLogo) {
+		if (person.companyName) {
 			const companyEl = headerEl.createDiv({ cls: "people-metadata-company-info" });
 
 			// Company name with favicon
@@ -209,11 +209,7 @@ export class DefinitionPopover extends Component {
 				companyNameContainer.createSpan({ text: person.companyName, cls: "people-metadata-company-name" });
 			}
 
-			// Company logo (separate from favicon)
-			if (person.companyLogo) {
-				const logoEl = companyEl.createDiv({ cls: "people-metadata-company-logo" });
-				this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
-			}
+			// Company logo removed - only keep small favicon
 		}
 
 		// Add filename display if enabled
@@ -299,7 +295,7 @@ export class DefinitionPopover extends Component {
 			});
 
 			// Add company info to tab content
-			if (person.companyName || person.companyLogo) {
+			if (person.companyName) {
 				const companyEl = tabContent.createDiv({ cls: "people-metadata-company-info" });
 
 				// Company name with favicon
@@ -326,11 +322,7 @@ export class DefinitionPopover extends Component {
 					companyNameContainer.createSpan({ text: person.companyName, cls: "people-metadata-company-name" });
 				}
 
-				// Company logo (separate from favicon)
-				if (person.companyLogo) {
-					const logoEl = companyEl.createDiv({ cls: "people-metadata-company-logo" });
-					this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
-				}
+				// Company logo removed - only keep small favicon
 			}
 
 			// Add filename display if enabled
@@ -404,41 +396,7 @@ export class DefinitionPopover extends Component {
 		}, 10);
 	}
 
-	private renderCompanyLogoWithFallback(logoMarkdown: string, logoEl: HTMLElement, person: PersonMetadata) {
-		// First try to render the original logo
-		MarkdownRenderer.render(this.app, logoMarkdown, logoEl,
-			normalizePath(person.file.path), this);
-
-		// Set up error handling for failed images
-		window.setTimeout(() => {
-			const imgElements = logoEl.querySelectorAll('img');
-			imgElements.forEach(img => {
-				// Check if image failed to load or is broken
-				if (!img.complete || img.naturalHeight === 0) {
-					this.showDefaultLogo(logoEl, person.companyName);
-				} else {
-					// Set up error handler for future load failures
-					img.onerror = () => {
-						this.showDefaultLogo(logoEl, person.companyName);
-					};
-				}
-			});
-		}, 100); // Small delay to allow image loading attempt
-	}
-
-	private showDefaultLogo(logoEl: HTMLElement, companyName?: string) {
-		// Clear existing content
-		logoEl.empty();
-
-		// Create default logo element
-		const defaultLogo = logoEl.createDiv({
-			cls: "people-metadata-company-logo-default",
-			text: companyName ? companyName.substring(0, 2).toUpperCase() : "CO"
-		});
-
-		// Add title attribute for accessibility
-		defaultLogo.title = companyName ? `${companyName} (default logo)` : "Company (default logo)";
-	}
+	// Company logo methods removed - only using small favicons now
 
 	private generateFaviconUrl(companyUrl: string): string {
 		try {
