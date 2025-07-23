@@ -16,6 +16,15 @@ export class AboutPeopleMetadataModal extends Modal {
 		this.modalEl.style.maxHeight = "95vh";
 
 		this.createModalContent(contentEl);
+
+		// Ensure modal opens at the top - multiple attempts for reliability
+		contentEl.scrollTop = 0;
+		setTimeout(() => {
+			contentEl.scrollTop = 0;
+		}, 0);
+		setTimeout(() => {
+			contentEl.scrollTop = 0;
+		}, 50);
 	}
 
 	private createModalContent(container: HTMLElement) {

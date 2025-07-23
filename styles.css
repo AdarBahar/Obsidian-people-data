@@ -952,6 +952,7 @@
 	padding: var(--size-4-4) var(--size-4-6) !important;
 	overflow-y: auto !important;
 	overflow-x: hidden !important;
+	scroll-behavior: smooth !important;
 }
 
 .about-people-metadata-modal .modal-content {
