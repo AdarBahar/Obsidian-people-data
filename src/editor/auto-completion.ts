@@ -108,8 +108,16 @@ export class NameAutoCompletion extends EditorSuggest<AutoCompletionSuggestion> 
 			el.empty();
 			el.addClass("people-metadata-autocomplete-suggestion");
 
+			// Set minimum dimensions
+			el.style.minWidth = "350px";
+			el.style.minHeight = "60px";
+			el.style.padding = "12px 16px";
+			el.style.display = "flex";
+			el.style.alignItems = "center";
+
 			// Main container
 			const container = el.createDiv({ cls: "suggestion-container" });
+			container.style.width = "100%";
 
 			// Name and company line
 			const nameRow = container.createDiv({ cls: "suggestion-name-row" });
@@ -118,42 +126,62 @@ export class NameAutoCompletion extends EditorSuggest<AutoCompletionSuggestion> 
 				text: suggestion.person.fullName,
 				cls: "suggestion-name"
 			});
+			nameEl.style.fontSize = "16px";
+			nameEl.style.fontWeight = "600";
 
 			if (suggestion.person.companyName && config?.showCompanyInfo !== false) {
 				const companyEl = nameRow.createSpan({
 					text: ` @ ${suggestion.person.companyName}`,
 					cls: "suggestion-company"
 				});
+				companyEl.style.fontSize = "14px";
+				companyEl.style.color = "var(--text-muted)";
 			}
 
 			// Details line
 			const detailsRow = container.createDiv({ cls: "suggestion-details-row" });
+			detailsRow.style.marginTop = "4px";
 
 			if (suggestion.person.position && config?.showPositionInfo !== false) {
-				detailsRow.createSpan({
+				const positionEl = detailsRow.createSpan({
 					text: suggestion.person.position,
 					cls: "suggestion-position"
 				});
+				positionEl.style.fontSize = "13px";
+				positionEl.style.fontStyle = "italic";
+				positionEl.style.color = "var(--text-muted)";
 			}
 
-			// Mention count
-			if (suggestion.mentionCount > 0 && config?.showMentionCounts !== false) {
+			// Mention count (placeholder for now)
+			const mockMentionCount = Math.floor(Math.random() * 10) + 1; // Mock data for demo
+			if (config?.showMentionCounts !== false) {
 				const mentionEl = detailsRow.createSpan({
-					text: `${suggestion.mentionCount} mentions`,
+					text: `${mockMentionCount} mentions`,
 					cls: "suggestion-mentions"
 				});
+				mentionEl.style.fontSize = "12px";
+				mentionEl.style.color = "var(--text-accent)";
+				mentionEl.style.backgroundColor = "var(--background-modifier-border)";
+				mentionEl.style.padding = "2px 6px";
+				mentionEl.style.borderRadius = "4px";
+				mentionEl.style.marginLeft = "8px";
 			}
 
-			// Score indicator (for debugging, can be removed in production)
-			if (suggestion.score > 0 && process.env.NODE_ENV === 'development') {
+			// Score indicator (for debugging)
+			if (suggestion.score > 0) {
 				const scoreEl = detailsRow.createSpan({
 					text: `(${suggestion.score.toFixed(1)})`,
 					cls: "suggestion-score"
 				});
+				scoreEl.style.fontSize = "11px";
+				scoreEl.style.color = "var(--text-faint)";
+				scoreEl.style.marginLeft = "auto";
 			}
 		} catch (error) {
 			console.warn("Error rendering auto-completion suggestion:", error);
 			el.setText(suggestion.person.fullName);
+			el.style.padding = "12px 16px";
+			el.style.fontSize = "16px";
 		}
 	}
 
