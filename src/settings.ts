@@ -33,6 +33,16 @@ export interface DefinitionPopoverConfig {
 	backgroundColour?: string;
 }
 
+export interface AutoCompletionConfig {
+	enabled: boolean;
+	triggerPattern: string;
+	minQueryLength: number;
+	maxSuggestions: number;
+	showMentionCounts: boolean;
+	showCompanyInfo: boolean;
+	showPositionInfo: boolean;
+}
+
 export interface Settings {
 	enableInReadingView: boolean;
 	enableSpellcheck: boolean;
@@ -42,6 +52,7 @@ export interface Settings {
 	defFileParseConfig: DefFileParseConfig;
 	defPopoverConfig: DefinitionPopoverConfig;
 	enableFileExplorerTags: boolean;
+	autoCompletionConfig: AutoCompletionConfig;
 }
 
 export const DEFAULT_DEF_FOLDER = "people"
@@ -50,6 +61,15 @@ export const DEFAULT_SETTINGS: Partial<Settings> = {
 	enableInReadingView: true,
 	enableSpellcheck: true,
 	enableFileExplorerTags: false, // Disabled by default to prevent errors
+	autoCompletionConfig: {
+		enabled: true,
+		triggerPattern: "@name:",
+		minQueryLength: 1,
+		maxSuggestions: 10,
+		showMentionCounts: true,
+		showCompanyInfo: true,
+		showPositionInfo: true
+	},
 	autoRegisterNewFiles: true,
 	popoverEvent: PopoverEventSettings.Hover,
 	defFileParseConfig: {
@@ -199,6 +219,100 @@ export class SettingsTab extends PluginSettingTab {
 			});
 
 
+
+		new Setting(containerEl)
+			.setHeading()
+			.setName("Auto-completion settings");
+
+		new Setting(containerEl)
+			.setName("Enable name auto-completion")
+			.setDesc("Enable auto-completion for people names using trigger patterns")
+			.addToggle((component) => {
+				component.setValue(this.settings.autoCompletionConfig?.enabled ?? true);
+				component.onChange(async value => {
+					if (!this.settings.autoCompletionConfig) {
+						this.settings.autoCompletionConfig = DEFAULT_SETTINGS.autoCompletionConfig!;
+					}
+					this.settings.autoCompletionConfig.enabled = value;
+					await this.saveCallback();
+					this.display(); // Refresh to show/hide other settings
+				});
+			});
+
+		if (this.settings.autoCompletionConfig?.enabled !== false) {
+			new Setting(containerEl)
+				.setName("Trigger pattern")
+				.setDesc("Pattern that triggers auto-completion (e.g., @name:, @person:, @)")
+				.addText((component) => {
+					component.setValue(this.settings.autoCompletionConfig?.triggerPattern ?? "@name:");
+					component.setPlaceholder("@name:");
+					component.onChange(async value => {
+						if (!this.settings.autoCompletionConfig) {
+							this.settings.autoCompletionConfig = DEFAULT_SETTINGS.autoCompletionConfig!;
+						}
+						this.settings.autoCompletionConfig.triggerPattern = value || "@name:";
+						await this.saveCallback();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName("Maximum suggestions")
+				.setDesc("Maximum number of suggestions to show")
+				.addSlider((component) => {
+					component.setLimits(3, 20, 1);
+					component.setValue(this.settings.autoCompletionConfig?.maxSuggestions ?? 10);
+					component.setDynamicTooltip();
+					component.onChange(async value => {
+						if (!this.settings.autoCompletionConfig) {
+							this.settings.autoCompletionConfig = DEFAULT_SETTINGS.autoCompletionConfig!;
+						}
+						this.settings.autoCompletionConfig.maxSuggestions = value;
+						await this.saveCallback();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName("Show mention counts")
+				.setDesc("Display how many times each person has been mentioned")
+				.addToggle((component) => {
+					component.setValue(this.settings.autoCompletionConfig?.showMentionCounts ?? true);
+					component.onChange(async value => {
+						if (!this.settings.autoCompletionConfig) {
+							this.settings.autoCompletionConfig = DEFAULT_SETTINGS.autoCompletionConfig!;
+						}
+						this.settings.autoCompletionConfig.showMentionCounts = value;
+						await this.saveCallback();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName("Show company information")
+				.setDesc("Display company names in suggestions")
+				.addToggle((component) => {
+					component.setValue(this.settings.autoCompletionConfig?.showCompanyInfo ?? true);
+					component.onChange(async value => {
+						if (!this.settings.autoCompletionConfig) {
+							this.settings.autoCompletionConfig = DEFAULT_SETTINGS.autoCompletionConfig!;
+						}
+						this.settings.autoCompletionConfig.showCompanyInfo = value;
+						await this.saveCallback();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName("Show position information")
+				.setDesc("Display job positions in suggestions")
+				.addToggle((component) => {
+					component.setValue(this.settings.autoCompletionConfig?.showPositionInfo ?? true);
+					component.onChange(async value => {
+						if (!this.settings.autoCompletionConfig) {
+							this.settings.autoCompletionConfig = DEFAULT_SETTINGS.autoCompletionConfig!;
+						}
+						this.settings.autoCompletionConfig.showPositionInfo = value;
+						await this.saveCallback();
+					});
+				});
+		}
 
 		new Setting(containerEl)
 			.setHeading()

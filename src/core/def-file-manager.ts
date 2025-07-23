@@ -233,6 +233,14 @@ export class DefManager {
 		return [...this.globalDefFolders.values()];
 	}
 
+	getAllPeople(): PersonMetadata[] {
+		const people: PersonMetadata[] = [];
+		this.globalDefs.fileDefMap.forEach((defMap) => {
+			people.push(...Array.from(defMap.values()));
+		});
+		return people;
+	}
+
 	async loadUpdatedFiles() {
 		const definitions: PersonMetadata[] = [];
 		const dirtyFiles: string[] = [];

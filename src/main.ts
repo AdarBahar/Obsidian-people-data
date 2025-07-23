@@ -18,11 +18,13 @@ import { PluginContext } from './core/plugin-context';
 import { DefinitionPreviewService } from './core/definition-preview-service';
 import { initCompanyManager, getCompanyManager } from './core/company-manager';
 import { CompanyConfigModal } from './editor/company-config-modal';
+import { initNameAutoCompletion, NameAutoCompletion } from './editor/auto-completion';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
 	defManager: DefManager;
 	fileExplorerDeco: FileExplorerDecoration;
+	nameAutoCompletion: NameAutoCompletion;
 	dynamicStylesEl: HTMLStyleElement;
 	context: PluginContext;
 	previewService: DefinitionPreviewService;
@@ -46,6 +48,12 @@ export default class NoteDefinition extends Plugin {
 		this.defManager = initDefFileManager(this.app);
 		this.fileExplorerDeco = initFileExplorerDecoration(this.app);
 		initCompanyManager(this.app);
+
+		// Initialize auto-completion if enabled
+		if (this.context.settings.autoCompletionConfig?.enabled !== false) {
+			this.nameAutoCompletion = initNameAutoCompletion(this.app);
+			this.registerEditorSuggest(this.nameAutoCompletion);
+		}
 		this.registerEditorExtension(this.activeEditorExtensions);
 		this.updateEditorExts();
 
@@ -160,10 +168,33 @@ export default class NoteDefinition extends Plugin {
 					const contextStatus = PluginContext.isInitialized() ? "✅ Initialized" : "❌ Not initialized";
 					const defManagerStatus = this.defManager ? "✅ Available" : "❌ Missing";
 					const peopleCount = this.defManager ? this.defManager.getDefFiles().length : 0;
+					const autoCompleteStatus = this.nameAutoCompletion ? "✅ Enabled" : "❌ Disabled";
 
-					new Notice(`Plugin Status:\nContext: ${contextStatus}\nDefManager: ${defManagerStatus}\nPeople files: ${peopleCount}`, 5000);
+					new Notice(`Plugin Status:\nContext: ${contextStatus}\nDefManager: ${defManagerStatus}\nPeople files: ${peopleCount}\nAuto-completion: ${autoCompleteStatus}`, 5000);
 				} catch (error) {
 					new Notice("Status check error: " + error.message);
+				}
+			}
+		});
+
+		this.addCommand({
+			id: "insert-name-trigger",
+			name: "Insert name auto-completion trigger",
+			editorCallback: (editor) => {
+				try {
+					const settings = getSettings();
+					const trigger = settings.autoCompletionConfig?.triggerPattern || "@name:";
+					const cursor = editor.getCursor();
+					editor.replaceRange(trigger, cursor);
+
+					// Position cursor after the trigger
+					const newCursor = {
+						line: cursor.line,
+						ch: cursor.ch + trigger.length
+					};
+					editor.setCursor(newCursor);
+				} catch (error) {
+					new Notice("Error inserting trigger: " + error.message);
 				}
 			}
 		});
