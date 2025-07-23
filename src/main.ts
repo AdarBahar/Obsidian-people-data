@@ -65,6 +65,9 @@ export default class NoteDefinition extends Plugin {
 
 		this.initDynamicStyles();
 
+		// Load definitions and apply company colors immediately
+		await this.refreshDefinitions();
+
 		// Delay file explorer decoration until workspace is ready
 		// This is a non-critical feature that adds visual tags to files
 		this.app.workspace.onLayoutReady(() => {
@@ -75,6 +78,9 @@ export default class NoteDefinition extends Plugin {
 					if (this.context.settings.enableFileExplorerTags) {
 						this.fileExplorerDeco.run();
 					}
+
+					// Ensure company colors are applied after workspace is ready
+					this.updateCompanyColors();
 				} catch (error) {
 					// File explorer decoration is non-critical, fail silently
 				}
@@ -198,6 +204,25 @@ export default class NoteDefinition extends Plugin {
 				}
 			}
 		});
+
+		this.addCommand({
+			id: "refresh-all",
+			name: "Refresh all (definitions, colors, UI)",
+			callback: async () => {
+				try {
+					new Notice("Refreshing all plugin data...");
+					await this.refreshDefinitions();
+					this.updateCompanyColors();
+					if (this.context.settings.enableFileExplorerTags) {
+						this.fileExplorerDeco.run();
+					}
+					this.updateEditorExts();
+					new Notice("All plugin data refreshed successfully!");
+				} catch (error) {
+					new Notice("Error refreshing plugin data: " + error.message);
+				}
+			}
+		});
 	}
 
 	registerEvents() {
@@ -318,8 +343,11 @@ export default class NoteDefinition extends Plugin {
 
 	async refreshDefinitions() {
 		await this.defManager.loadDefinitions();
-		// Update company colors after loading people
-		window.setTimeout(() => this.updateCompanyColors(), 100);
+
+		// Update company colors after loading people with multiple attempts for reliability
+		this.updateCompanyColors(); // Immediate attempt
+		window.setTimeout(() => this.updateCompanyColors(), 100); // Backup after 100ms
+		window.setTimeout(() => this.updateCompanyColors(), 500); // Final backup after 500ms
 	}
 
 	reloadUpdatedDefinitions() {
@@ -475,22 +503,33 @@ Notes about the second person.
 
 	updateCompanyColors() {
 		if (!this.dynamicStylesEl) {
+			console.warn("People Metadata: Dynamic styles element not ready for company colors");
 			return;
 		}
 
 		const companies = new Map<string, string>();
 		const defRepo = this.defManager?.globalDefs;
 
-		if (defRepo) {
-			// Collect all company colors
-			for (const [, fileMap] of defRepo.fileDefMap) {
-				for (const [, person] of fileMap) {
-					if (person.companyName && person.companyColor) {
-						companies.set(person.companyName, person.companyColor);
-					}
+		if (!defRepo) {
+			console.warn("People Metadata: Definition repository not ready for company colors");
+			return;
+		}
+
+		// Collect all company colors
+		let totalPeople = 0;
+		let companiesWithColors = 0;
+
+		for (const [, fileMap] of defRepo.fileDefMap) {
+			for (const [, person] of fileMap) {
+				totalPeople++;
+				if (person.companyName && person.companyColor) {
+					companies.set(person.companyName, person.companyColor);
+					companiesWithColors++;
 				}
 			}
 		}
+
+		console.log(`People Metadata: Updating company colors for ${companies.size} companies (${companiesWithColors}/${totalPeople} people have company colors)`);
 
 		// Generate CSS rules for each company
 		let cssRules = '';
@@ -504,6 +543,7 @@ Notes about the second person.
 		}
 
 		this.dynamicStylesEl.textContent = cssRules;
+		console.log(`People Metadata: Applied ${companies.size} company color rules`);
 	}
 
 	onunload() {
