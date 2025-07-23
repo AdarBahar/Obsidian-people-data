@@ -44,6 +44,13 @@ export interface AutoCompletionConfig {
 	showPositionInfo: boolean;
 }
 
+export interface OptimizationConfig {
+	useOptimizedSearch: boolean;
+	autoRefreshMentionCounts: boolean;
+	cacheSize: number;
+	enablePerformanceMonitoring: boolean;
+}
+
 export interface Settings {
 	enableInReadingView: boolean;
 	enableSpellcheck: boolean;
@@ -54,6 +61,7 @@ export interface Settings {
 	defPopoverConfig: DefinitionPopoverConfig;
 	enableFileExplorerTags: boolean;
 	autoCompletionConfig: AutoCompletionConfig;
+	optimizationConfig: OptimizationConfig;
 }
 
 export const DEFAULT_DEF_FOLDER = "people"
@@ -70,6 +78,12 @@ export const DEFAULT_SETTINGS: Partial<Settings> = {
 		showMentionCounts: true,
 		showCompanyInfo: true,
 		showPositionInfo: true
+	},
+	optimizationConfig: {
+		useOptimizedSearch: true,
+		autoRefreshMentionCounts: true,
+		cacheSize: 1000,
+		enablePerformanceMonitoring: true
 	},
 	autoRegisterNewFiles: true,
 	popoverEvent: PopoverEventSettings.Hover,
@@ -314,6 +328,68 @@ export class SettingsTab extends PluginSettingTab {
 					});
 				});
 		}
+
+		new Setting(containerEl)
+			.setHeading()
+			.setName("Performance optimization settings");
+
+		new Setting(containerEl)
+			.setName("Use optimized search")
+			.setDesc("Enable advanced search engine with multi-index system and caching for better performance")
+			.addToggle((component) => {
+				component.setValue(this.settings.optimizationConfig?.useOptimizedSearch ?? true);
+				component.onChange(async value => {
+					if (!this.settings.optimizationConfig) {
+						this.settings.optimizationConfig = DEFAULT_SETTINGS.optimizationConfig!;
+					}
+					this.settings.optimizationConfig.useOptimizedSearch = value;
+					await this.saveCallback();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Auto-refresh mention counts")
+			.setDesc("Automatically update mention counts when files are modified (works with optimized search)")
+			.addToggle((component) => {
+				component.setValue(this.settings.optimizationConfig?.autoRefreshMentionCounts ?? true);
+				component.onChange(async value => {
+					if (!this.settings.optimizationConfig) {
+						this.settings.optimizationConfig = DEFAULT_SETTINGS.optimizationConfig!;
+					}
+					this.settings.optimizationConfig.autoRefreshMentionCounts = value;
+					await this.saveCallback();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Cache size")
+			.setDesc("Number of search results to cache for better performance")
+			.addSlider((component) => {
+				component.setLimits(100, 5000, 100);
+				component.setValue(this.settings.optimizationConfig?.cacheSize ?? 1000);
+				component.setDynamicTooltip();
+				component.onChange(async value => {
+					if (!this.settings.optimizationConfig) {
+						this.settings.optimizationConfig = DEFAULT_SETTINGS.optimizationConfig!;
+					}
+					this.settings.optimizationConfig.cacheSize = value;
+					await this.saveCallback();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Performance monitoring")
+			.setDesc("Enable detailed performance tracking and statistics")
+			.addToggle((component) => {
+				component.setValue(this.settings.optimizationConfig?.enablePerformanceMonitoring ?? true);
+				component.onChange(async value => {
+					if (!this.settings.optimizationConfig) {
+						this.settings.optimizationConfig = DEFAULT_SETTINGS.optimizationConfig!;
+					}
+					this.settings.optimizationConfig.enablePerformanceMonitoring = value;
+					await this.saveCallback();
+				});
+			});
 
 		new Setting(containerEl)
 			.setHeading()

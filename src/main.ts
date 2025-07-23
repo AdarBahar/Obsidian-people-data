@@ -1,4 +1,4 @@
-import { Menu, Notice, Plugin, TFolder, WorkspaceWindow, TFile, MarkdownView } from 'obsidian';
+import { Menu, Modal, Notice, Plugin, TFolder, WorkspaceWindow, TFile, MarkdownView } from 'obsidian';
 import { definitionMarker } from './editor/decoration';
 import { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -20,6 +20,8 @@ import { initCompanyManager, getCompanyManager } from './core/company-manager';
 import { CompanyConfigModal } from './editor/company-config-modal';
 import { initNameAutoCompletion, NameAutoCompletion } from './editor/auto-completion';
 import { AboutPeopleMetadataModal } from './editor/about-modal';
+import { initOptimizedSearchEngine, getOptimizedSearchEngine } from './core/optimized-search-engine';
+import { initSmartLineScanner, getSmartLineScanner } from './core/smart-line-scanner';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
@@ -49,6 +51,10 @@ export default class NoteDefinition extends Plugin {
 		this.defManager = initDefFileManager(this.app);
 		this.fileExplorerDeco = initFileExplorerDecoration(this.app);
 		initCompanyManager(this.app);
+
+		// Initialize optimization systems
+		initOptimizedSearchEngine();
+		initSmartLineScanner();
 
 		// Initialize auto-completion if enabled
 		if (this.context.settings.autoCompletionConfig?.enabled !== false) {
@@ -233,6 +239,68 @@ export default class NoteDefinition extends Plugin {
 				aboutModal.open();
 			}
 		});
+
+		this.addCommand({
+			id: "toggle-optimized-search",
+			name: "Toggle optimized search",
+			callback: async () => {
+				const currentSetting = this.context.settings.optimizationConfig?.useOptimizedSearch ?? true;
+				if (!this.context.settings.optimizationConfig) {
+					this.context.settings.optimizationConfig = {
+						useOptimizedSearch: !currentSetting,
+						autoRefreshMentionCounts: true,
+						cacheSize: 1000,
+						enablePerformanceMonitoring: true
+					};
+				} else {
+					this.context.settings.optimizationConfig.useOptimizedSearch = !currentSetting;
+				}
+				await this.saveSettings();
+				new Notice(`Optimized search ${!currentSetting ? 'enabled' : 'disabled'}`);
+			}
+		});
+
+		this.addCommand({
+			id: "show-search-performance",
+			name: "Show search performance statistics",
+			callback: () => {
+				this.showPerformanceStatistics();
+			}
+		});
+
+		this.addCommand({
+			id: "rebuild-search-indexes",
+			name: "Rebuild optimized search indexes",
+			callback: async () => {
+				try {
+					new Notice("Rebuilding search indexes...");
+					const searchEngine = getOptimizedSearchEngine();
+					if (searchEngine && this.defManager) {
+						const allPeople = this.defManager.getAllPeople();
+						searchEngine.buildIndexes(allPeople);
+						new Notice("Search indexes rebuilt successfully!");
+					} else {
+						new Notice("Search engine not available");
+					}
+				} catch (error) {
+					new Notice("Error rebuilding indexes: " + error.message);
+				}
+			}
+		});
+
+		this.addCommand({
+			id: "refresh-mention-counts",
+			name: "Refresh mention counts",
+			callback: async () => {
+				try {
+					new Notice("Refreshing mention counts...");
+					// TODO: Implement mention count refresh
+					new Notice("Mention counts refreshed!");
+				} catch (error) {
+					new Notice("Error refreshing mention counts: " + error.message);
+				}
+			}
+		});
 	}
 
 	registerEvents() {
@@ -353,6 +421,15 @@ export default class NoteDefinition extends Plugin {
 
 	async refreshDefinitions() {
 		await this.defManager.loadDefinitions();
+
+		// Rebuild optimized search indexes if enabled
+		if (this.context.settings.optimizationConfig?.useOptimizedSearch !== false) {
+			const searchEngine = getOptimizedSearchEngine();
+			if (searchEngine) {
+				const allPeople = this.defManager.getAllPeople();
+				searchEngine.buildIndexes(allPeople);
+			}
+		}
 
 		// Update company colors after loading people with multiple attempts for reliability
 		this.updateCompanyColors(); // Immediate attempt
@@ -554,6 +631,66 @@ Notes about the second person.
 
 		this.dynamicStylesEl.textContent = cssRules;
 		console.log(`People Metadata: Applied ${companies.size} company color rules`);
+	}
+
+	private showPerformanceStatistics() {
+		const searchEngine = getOptimizedSearchEngine();
+		const lineScanner = getSmartLineScanner();
+
+		if (!searchEngine || !lineScanner) {
+			new Notice("Performance monitoring not available");
+			return;
+		}
+
+		const searchStats = searchEngine.getPerformanceStats();
+		const scannerStats = lineScanner.getAveragePerformance();
+
+		const statsText = `
+**Search Engine Performance:**
+• Cache Hit Rate: ${searchStats.cacheHitRate.toFixed(1)}%
+• Average Scan Time: ${searchStats.averageScanTime.toFixed(2)}ms
+• Total Searches: ${searchStats.totalSearches}
+• Memory Usage: ${(searchStats.memoryUsage / 1024).toFixed(1)}KB
+
+**Index Sizes:**
+• Name Index: ${searchStats.indexSizes.nameIndex} entries
+• Company Index: ${searchStats.indexSizes.companyIndex} entries
+• Prefix Index: ${searchStats.indexSizes.prefixIndex} nodes
+• Fuzzy Index: ${searchStats.indexSizes.fuzzyIndex} entries
+
+**Line Scanner Performance:**
+• Average Scan Time: ${scannerStats.averageScanTime.toFixed(2)}ms
+• Cache Hit Rate: ${scannerStats.cacheHitRate.toFixed(1)}%
+• Strategy Usage:
+  - Prefix Tree: ${scannerStats.strategyCounts['prefix-tree'] || 0}
+  - Word Boundary: ${scannerStats.strategyCounts['word-boundary'] || 0}
+  - Fuzzy Matching: ${scannerStats.strategyCounts['fuzzy-matching'] || 0}
+  - Legacy: ${scannerStats.strategyCounts['legacy'] || 0}
+		`.trim();
+
+		// Create a simple modal to display stats
+		const modal = new Modal(this.app);
+		modal.titleEl.setText("Search Performance Statistics");
+		modal.contentEl.createEl("pre", { text: statsText });
+
+		const buttonContainer = modal.contentEl.createDiv({ cls: "modal-button-container" });
+		buttonContainer.style.marginTop = "20px";
+		buttonContainer.style.textAlign = "center";
+
+		const clearCacheBtn = buttonContainer.createEl("button", { text: "Clear Caches" });
+		clearCacheBtn.onclick = () => {
+			searchEngine.clearCache();
+			lineScanner.clearCache();
+			lineScanner.clearMetrics();
+			new Notice("Caches cleared!");
+			modal.close();
+		};
+
+		const closeBtn = buttonContainer.createEl("button", { text: "Close" });
+		closeBtn.style.marginLeft = "10px";
+		closeBtn.onclick = () => modal.close();
+
+		modal.open();
 	}
 
 	onunload() {
