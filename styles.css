@@ -811,6 +811,47 @@
 	margin-left: var(--size-2-1);
 }
 
+/* Add New Company Styles */
+.company-config-add-new {
+	padding: var(--size-4-4);
+	border-top: 1px solid var(--background-modifier-border);
+	text-align: center;
+}
+
+.company-config-add-new-btn {
+	padding: var(--size-2-2) var(--size-4-4);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--interactive-accent);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	cursor: pointer;
+	font-size: var(--font-ui-medium);
+	font-weight: 500;
+	transition: background-color 0.2s ease;
+}
+
+.company-config-add-new-btn:hover {
+	background-color: var(--interactive-accent-hover);
+}
+
+/* Company Created Notification Styles */
+.company-created-notice {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+.company-created-link {
+	color: var(--text-accent);
+	text-decoration: underline;
+	cursor: pointer;
+	font-weight: 500;
+}
+
+.company-created-link:hover {
+	color: var(--text-accent-hover);
+}
+
 /* Fade effect for scrollable content */
 .people-metadata-tab-content::after {
 	content: '';

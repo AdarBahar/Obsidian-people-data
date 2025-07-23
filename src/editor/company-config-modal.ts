@@ -56,6 +56,14 @@ export class CompanyConfigModal extends Modal {
 			this.createCompanyItem(companiesContainer, company);
 		});
 
+		// Add new company button
+		const addNewContainer = companiesContainer.createDiv({ cls: "company-config-add-new" });
+		const addNewButton = addNewContainer.createEl("button", {
+			text: "➕ Add New Company",
+			cls: "company-config-add-new-btn"
+		});
+		addNewButton.onclick = () => this.showAddNewCompanyForm();
+
 		// Add close button
 		const buttonContainer = contentEl.createDiv({ cls: "company-config-buttons" });
 
@@ -133,17 +141,57 @@ export class CompanyConfigModal extends Modal {
 	}
 
 	private createCompanySettings(container: HTMLElement, company: CompanyConfig) {
-		// 1. Underline Color Section
+		// 1. Company Name Section (for new companies)
+		if (!company.file) {
+			this.createCompanyNameSection(container, company);
+		}
+
+		// 2. Underline Color Section
 		this.createColorSection(container, company);
 
-		// 2. Homepage Section
+		// 3. Homepage Section
 		this.createHomepageSection(container, company);
 
-		// 3. Company Logo Section
+		// 4. Company Logo Section
 		this.createLogoSection(container, company);
 
-		// 4. Save/Cancel buttons
+		// 5. Save/Cancel buttons
 		this.createActionButtons(container, company);
+	}
+
+	private createCompanyNameSection(container: HTMLElement, company: CompanyConfig) {
+		const state = this.companyStates.get(company.name);
+		if (!state) return;
+
+		const section = container.createDiv({ cls: "company-config-section" });
+
+		section.createEl("h4", { text: "Company Name" });
+
+		const inputContainer = section.createDiv({ cls: "company-config-input-container" });
+		inputContainer.createEl("label", { text: "Company Name:" });
+
+		const nameInput = inputContainer.createEl("input", {
+			type: "text",
+			placeholder: "Enter company name",
+			value: company.name === "New Company" ? "" : company.name
+		});
+
+		nameInput.oninput = () => {
+			const newName = nameInput.value.trim();
+			if (newName && newName !== company.name) {
+				// Update company name in state
+				const oldName = company.name;
+				company.name = newName;
+				state.currentConfig.name = newName;
+				state.hasUnsavedChanges = true;
+
+				// Update the state map with new name
+				this.companyStates.delete(oldName);
+				this.companyStates.set(newName, state);
+
+				this.updateActionButtons(container, company);
+			}
+		};
 	}
 
 	private createColorSection(container: HTMLElement, company: CompanyConfig) {
@@ -594,22 +642,34 @@ export class CompanyConfigModal extends Modal {
 	}
 
 	private async saveCompany(companyName: string) {
-		const state = this.companyStates.get(companyName)!;
-		const company = this.companies.find(c => c.name === companyName)!;
+		const state = this.companyStates.get(companyName);
+		if (!state) return;
+
+		const company = this.companies.find(c => c.name === companyName);
+		if (!company) return;
 
 		try {
 			// Update the original company config
 			Object.assign(company, state.currentConfig);
 
-			// Save to file
-			await this.saveCompanyToFile(company);
+			// Check if this is a new company
+			if (!company.file) {
+				const success = await this.saveNewCompany(company);
+				if (!success) return;
+			} else {
+				// Save existing company to file
+				await this.saveCompanyToFile(company);
+			}
 
-			// Update state
+			// Update state and close drawer
 			state.originalConfig = { ...state.currentConfig };
 			state.hasUnsavedChanges = false;
+			state.isOpen = false; // Close the drawer
 
-			new Notice(`${companyName} settings saved successfully!`);
-			this.onOpen(); // Refresh to hide buttons
+			if (company.file) {
+				new Notice(`${companyName} settings saved successfully!`);
+			}
+			this.onOpen(); // Refresh to show closed state
 		} catch (error) {
 			new Notice(`Error saving ${companyName}: ${error.message}`);
 		}
@@ -639,6 +699,122 @@ export class CompanyConfigModal extends Modal {
 		}
 
 		this.close();
+	}
+
+	private showAddNewCompanyForm() {
+		// Create a temporary new company config
+		const newCompanyName = "New Company";
+		const tempCompany: CompanyConfig = {
+			name: newCompanyName,
+			color: "",
+			logo: "",
+			url: "",
+			file: null as any // Will be created when saved
+		};
+
+		// Add to companies list temporarily
+		this.companies.push(tempCompany);
+
+		// Initialize state
+		this.companyStates.set(newCompanyName, {
+			isOpen: true,
+			hasUnsavedChanges: false,
+			originalConfig: { ...tempCompany },
+			currentConfig: { ...tempCompany }
+		});
+
+		// Refresh modal to show new company form
+		this.onOpen();
+	}
+
+	private async saveNewCompany(company: CompanyConfig): Promise<boolean> {
+		try {
+			// Validate company name
+			if (!company.name || company.name.trim() === "" || company.name === "New Company") {
+				new Notice("Please enter a valid company name");
+				return false;
+			}
+
+			// Check if company already exists
+			const existingCompany = this.companies.find(c => c.name === company.name && c.file);
+			if (existingCompany) {
+				new Notice(`Company "${company.name}" already exists`);
+				return false;
+			}
+
+			// Find the People folder
+			const peopleFolder = this.app.vault.getAbstractFileByPath("People");
+			if (!peopleFolder) {
+				new Notice("People folder not found. Please create a 'People' folder first.");
+				return false;
+			}
+
+			// Create company file
+			const fileName = `${company.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ' ').trim()}.md`;
+			const filePath = `People/${fileName}`;
+
+			// Create frontmatter
+			let frontmatter = "---\ndef-type: consolidated\n";
+			if (company.color) {
+				frontmatter += `color: "${company.color}"\n`;
+			}
+			if (company.url) {
+				frontmatter += `url: "${company.url}"\n`;
+			}
+			frontmatter += "---\n\n";
+
+			// Add logo if specified
+			let content = frontmatter;
+			if (company.logo) {
+				content += `${company.logo}\n\n`;
+			}
+
+			// Add basic company template
+			content += `# ${company.name}\n\n`;
+			content += `## People\n\n`;
+			content += `<!-- Add people here -->\n\n`;
+			content += `## Notes\n\n`;
+			content += `<!-- Add company notes here -->\n`;
+
+			// Create the file
+			const newFile = await this.app.vault.create(filePath, content);
+			company.file = newFile;
+
+			// Show success notification with link
+			this.showCompanyCreatedNotification(company.name, newFile);
+
+			// Trigger refresh callback
+			this.onSave();
+
+			return true;
+		} catch (error) {
+			new Notice(`Error creating company: ${error.message}`);
+			return false;
+		}
+	}
+
+	private showCompanyCreatedNotification(companyName: string, file: TFile) {
+		const notice = new Notice("", 8000); // 8 second notice
+
+		// Create custom notice content
+		const noticeEl = notice.noticeEl;
+		noticeEl.empty();
+
+		const container = noticeEl.createDiv({ cls: "company-created-notice" });
+		container.createSpan({ text: `Company "${companyName}" created! ` });
+
+		const link = container.createEl("a", {
+			text: "Click here to add people",
+			cls: "company-created-link"
+		});
+
+		link.onclick = (e) => {
+			e.preventDefault();
+			// Open the company file
+			this.app.workspace.openLinkText(file.path, "", false);
+			notice.hide();
+			this.close(); // Close the modal
+		};
 	}
 
 	private async saveCompanyToFile(company: CompanyConfig): Promise<void> {
