@@ -139,30 +139,31 @@ export default class NoteDefinition extends Plugin {
 			name: "Force cleanup stuck tooltips",
 			callback: () => {
 				try {
-					// Force cleanup of all tooltips
-					const { cleanupDefinitionPopover } = require('./editor/definition-popover');
-					cleanupDefinitionPopover();
-
-					// Additional manual cleanup
+					// Simple cleanup without complex logic
 					document.querySelectorAll('.people-metadata-definition-popover').forEach(el => el.remove());
 					const popoverById = document.getElementById('definition-popover');
 					if (popoverById) popoverById.remove();
 					document.querySelectorAll('[id*="definition-popover"]').forEach(el => el.remove());
 
-					// Remove any stuck event listeners by cloning elements
-					const containers = document.querySelectorAll('.markdown-preview-view, .markdown-source-view');
-					containers.forEach(container => {
-						try {
-							const clone = container.cloneNode(true);
-							container.parentNode?.replaceChild(clone, container);
-						} catch (e) {
-							// Ignore cloning errors
-						}
-					});
-
-					new Notice("Tooltips and event listeners cleaned up successfully!");
+					new Notice("Tooltips cleaned up!");
 				} catch (error) {
-					new Notice("Error cleaning up tooltips: " + error.message);
+					new Notice("Error: " + error.message);
+				}
+			}
+		});
+
+		this.addCommand({
+			id: "test-plugin-status",
+			name: "Test plugin status",
+			callback: () => {
+				try {
+					const contextStatus = PluginContext.isInitialized() ? "✅ Initialized" : "❌ Not initialized";
+					const defManagerStatus = this.defManager ? "✅ Available" : "❌ Missing";
+					const peopleCount = this.defManager ? this.defManager.getDefFiles().length : 0;
+
+					new Notice(`Plugin Status:\nContext: ${contextStatus}\nDefManager: ${defManagerStatus}\nPeople files: ${peopleCount}`, 5000);
+				} catch (error) {
+					new Notice("Status check error: " + error.message);
 				}
 			}
 		});

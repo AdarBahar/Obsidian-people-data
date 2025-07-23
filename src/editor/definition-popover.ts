@@ -111,34 +111,15 @@ export class DefinitionPopover extends Component {
 	}
 
 	clickClose = (event: Event) => {
+		// Simplified version - just close the popover
+		// Avoid any complex logic that might cause errors
 		try {
-			// Double-check PluginContext before accessing settings
-			if (!PluginContext.isInitialized()) {
-				// Context not ready, just close the popover
-				this.close();
-				return;
-			}
-
-			const settings = getSettings();
-
-			// For click trigger mode, check if clicking on the same element that triggered the popover
-			if (settings.popoverEvent === PopoverEventSettings.Click) {
-				const target = event.target as HTMLElement;
-				const defElement = target.closest('.people-metadata-def-decoration');
-
-				// If clicking on a person name element, let the trigger handle it (toggle behavior)
-				if (defElement) {
-					return;
-				}
-			}
-
 			// For hover trigger with click dismiss, or click outside in click trigger mode
 			if (this.mountedPopover?.matches(":hover")) {
 				return;
 			}
 		} catch (error) {
-			// If any error occurs, just close the popover
-			console.warn("Error in clickClose, closing popover:", error.message);
+			// Ignore any errors and just close
 		}
 
 		this.close();
