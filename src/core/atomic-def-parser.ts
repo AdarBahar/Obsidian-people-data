@@ -1,6 +1,6 @@
 import { BaseDefParser } from "./base-def-parser";
 import { App, TFile } from "obsidian";
-import { PersonMetadata } from "./model";
+import { PersonMetadata, generatePersonId } from "./model";
 import { DefFileType } from "./file-type";
 import { parseColorValue } from "./company-colors";
 
@@ -84,6 +84,7 @@ export class AtomicDefParser extends BaseDefParser {
 		}
 
 		const personMetadata: PersonMetadata = {
+			id: generatePersonId(fullName, this.file.path),
 			fullName,
 			position,
 			department,

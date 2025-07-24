@@ -3,7 +3,7 @@ import { BaseDefParser } from "src/core/base-def-parser";
 import { DefFileParseConfig } from "src/settings";
 import { DefFileType } from "./file-type";
 // import { Definition } from "./model"; // Removed as it's no longer used
-import { FilePosition, PersonMetadata } from "./model";
+import { FilePosition, PersonMetadata, generatePersonId } from "./model";
 import { parseColorValue } from "./company-colors";
 
 
@@ -153,8 +153,10 @@ export class ConsolidatedDefParser extends BaseDefParser {
 	private commitDefBuffer() {
 		const notes = (this.defBuffer.notes ?? "").trim();
 
+		const fullName = this.defBuffer.fullName ?? "";
 		const personMetadata = {
-			fullName: this.defBuffer.fullName ?? "",
+			id: generatePersonId(fullName, this.file.path),
+			fullName,
 			position: this.defBuffer.position ?? "",
 			department: this.defBuffer.department ?? "",
 			notes: notes,

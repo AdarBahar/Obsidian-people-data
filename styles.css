@@ -1153,6 +1153,64 @@
 	}
 }
 
+/* Mention Counts Styles */
+.people-metadata-mention-counts {
+	margin-top: var(--size-2-3);
+	padding: var(--size-2-2) var(--size-2-3);
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.people-metadata-mention-total {
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	color: var(--text-accent);
+	margin-bottom: var(--size-2-1);
+}
+
+.people-metadata-mention-breakdown {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-bottom: var(--size-2-2);
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+.people-metadata-mention-text {
+	color: var(--text-normal);
+}
+
+.people-metadata-mention-tasks {
+	color: var(--text-normal);
+}
+
+.people-metadata-mention-refresh {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+	border-radius: var(--radius-s);
+	padding: var(--size-2-1) var(--size-2-2);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.people-metadata-mention-refresh:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.people-metadata-mention-refresh:disabled {
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	cursor: not-allowed;
+}
+
+.people-metadata-mention-refresh:disabled:hover {
+	background: var(--background-modifier-border);
+}
+
 /* Override Obsidian's default suggestion container styles */
 .suggestion-container.mod-complex {
 	min-width: 350px !important;

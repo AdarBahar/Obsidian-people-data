@@ -22,6 +22,7 @@ import { initNameAutoCompletion, NameAutoCompletion } from './editor/auto-comple
 import { AboutPeopleMetadataModal } from './editor/about-modal';
 import { initOptimizedSearchEngine, getOptimizedSearchEngine } from './core/optimized-search-engine';
 import { initSmartLineScanner, getSmartLineScanner } from './core/smart-line-scanner';
+import { initMentionCountingService, getMentionCountingService } from './core/mention-counting-service';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
@@ -55,6 +56,9 @@ export default class NoteDefinition extends Plugin {
 		// Initialize optimization systems
 		initOptimizedSearchEngine();
 		initSmartLineScanner();
+
+		// Initialize mention counting service
+		initMentionCountingService(this.app.vault, this.app.metadataCache);
 
 		// Initialize auto-completion if enabled
 		if (this.context.settings.autoCompletionConfig?.enabled !== false) {
@@ -293,17 +297,44 @@ export default class NoteDefinition extends Plugin {
 			name: "Refresh mention counts",
 			callback: async () => {
 				try {
+					const settings = this.context.settings;
+					if (!settings.mentionCountingConfig?.enabled) {
+						new Notice("Mention counting is disabled in settings");
+						return;
+					}
+
 					new Notice("Refreshing mention counts...");
-					// TODO: Implement mention count refresh
-					new Notice("Mention counts refreshed!");
+					const mentionService = getMentionCountingService();
+					if (mentionService && this.defManager) {
+						const allPeople = this.defManager.getAllPeople();
+						await mentionService.performFullScan(allPeople);
+						const stats = mentionService.getStats();
+						new Notice(`Mention counts refreshed! Found ${stats.totalMentionsFound} mentions across ${stats.filesWithMentions} files.`);
+					} else {
+						new Notice("Mention counting service not available");
+					}
 				} catch (error) {
 					new Notice("Error refreshing mention counts: " + error.message);
 				}
 			}
 		});
+
+		this.addCommand({
+			id: "show-mention-statistics",
+			name: "Show mention counting statistics",
+			callback: () => {
+				this.showMentionStatistics();
+			}
+		});
 	}
 
 	registerEvents() {
+		// Register file modification events for mention counting
+		this.registerEvent(this.app.vault.on("modify", (file) => {
+			if (file instanceof TFile && file.extension === 'md') {
+				this.handleFileModification(file);
+			}
+		}));
 		this.registerEvent(this.app.workspace.on("active-leaf-change", async (leaf) => {
 			if (!leaf) return;
 			this.reloadUpdatedDefinitions();
@@ -419,6 +450,21 @@ export default class NoteDefinition extends Plugin {
 		});
 	}
 
+	private handleFileModification(file: TFile) {
+		const settings = this.context.settings;
+
+		// Check if mention counting is enabled and auto-refresh is on
+		if (!settings.mentionCountingConfig?.enabled || !settings.mentionCountingConfig?.autoRefreshOnFileChange) {
+			return;
+		}
+
+		// Queue the file for mention count scanning
+		const mentionService = getMentionCountingService();
+		if (mentionService) {
+			mentionService.queueFileForScan(file.path);
+		}
+	}
+
 	async refreshDefinitions() {
 		await this.defManager.loadDefinitions();
 
@@ -428,6 +474,18 @@ export default class NoteDefinition extends Plugin {
 			if (searchEngine) {
 				const allPeople = this.defManager.getAllPeople();
 				searchEngine.buildIndexes(allPeople);
+			}
+		}
+
+		// Refresh mention counts if enabled
+		if (this.context.settings.mentionCountingConfig?.enabled) {
+			const mentionService = getMentionCountingService();
+			if (mentionService) {
+				const allPeople = this.defManager.getAllPeople();
+				// Perform scan in background to avoid blocking UI
+				setTimeout(() => {
+					mentionService.performFullScan(allPeople);
+				}, 1000);
 			}
 		}
 
@@ -684,6 +742,54 @@ Notes about the second person.
 			lineScanner.clearMetrics();
 			new Notice("Caches cleared!");
 			modal.close();
+		};
+
+		const closeBtn = buttonContainer.createEl("button", { text: "Close" });
+		closeBtn.style.marginLeft = "10px";
+		closeBtn.onclick = () => modal.close();
+
+		modal.open();
+	}
+
+	private showMentionStatistics() {
+		const mentionService = getMentionCountingService();
+
+		if (!mentionService) {
+			new Notice("Mention counting service not available");
+			return;
+		}
+
+		const stats = mentionService.getStats();
+		const topMentioned = mentionService.getTopMentioned(10);
+
+		const statsText = `
+**Mention Counting Statistics:**
+
+**Overall Stats:**
+• Total Files Scanned: ${stats.totalFilesScanned}
+• Total Mentions Found: ${stats.totalMentionsFound}
+• Files with Mentions: ${stats.filesWithMentions}
+• Average Scan Time: ${stats.averageScanTime.toFixed(2)}ms per file
+• Last Full Scan: ${stats.lastFullScan ? new Date(stats.lastFullScan).toLocaleString() : 'Never'}
+
+**Top 10 Most Mentioned People:**
+${topMentioned.map((item, index) => `${index + 1}. ${item.person}: ${item.count} mentions`).join('\n')}
+		`.trim();
+
+		// Create a simple modal to display stats
+		const modal = new Modal(this.app);
+		modal.titleEl.setText("Mention Counting Statistics");
+		modal.contentEl.createEl("pre", { text: statsText });
+
+		const buttonContainer = modal.contentEl.createDiv({ cls: "modal-button-container" });
+		buttonContainer.style.marginTop = "20px";
+		buttonContainer.style.textAlign = "center";
+
+		const refreshBtn = buttonContainer.createEl("button", { text: "Refresh Counts" });
+		refreshBtn.onclick = async () => {
+			modal.close();
+			// Trigger refresh command
+			(this.app as any).commands.executeCommandById('people-metadata:refresh-mention-counts');
 		};
 
 		const closeBtn = buttonContainer.createEl("button", { text: "Close" });

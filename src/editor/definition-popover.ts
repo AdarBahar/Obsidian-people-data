@@ -4,6 +4,7 @@ import { PluginContext } from "src/core/plugin-context";
 // import { Definition } from "src/core/model"; // Removed as it's no longer used
 import { getSettings, PopoverDismissType, PopoverEventSettings } from "src/settings";
 import { logError } from "src/util/log";
+import { getMentionCountingService } from "src/core/mention-counting-service";
 
 const DEF_POPOVER_ID = "definition-popover";
 
@@ -233,6 +234,9 @@ export class DefinitionPopover extends Component {
 			detailsEl.createDiv({ text: `Department: ${person.department}` });
 		}
 
+		// Add mention counts if enabled
+		this.addMentionCounts(detailsEl, person);
+
 		// Notes content
 		const contentEl = el.createDiv({ cls: "people-metadata-person-notes" });
 		contentEl.setAttr("ctx", "person-popup");
@@ -346,6 +350,9 @@ export class DefinitionPopover extends Component {
 				detailsEl.createDiv({ text: `Department: ${person.department}` });
 			}
 
+			// Add mention counts if enabled
+			this.addMentionCounts(detailsEl, person);
+
 			// Notes content
 			const contentEl = tabContent.createDiv({ cls: "people-metadata-person-notes" });
 			contentEl.setAttr("ctx", "person-popup");
@@ -424,7 +431,7 @@ export class DefinitionPopover extends Component {
 			if (linkEl) {
 				linkEl.addEventListener('click', e => {
 					e.preventDefault();
-					const file = this.app.metadataCache.getFirstLinkpathDest(linkEl.getAttr("href") ?? '', 
+					const file = this.app.metadataCache.getFirstLinkpathDest(linkEl.getAttr("href") ?? '',
 						normalizePath(person.file.path))
 					this.unmount();
 					if (!file) {
@@ -434,6 +441,95 @@ export class DefinitionPopover extends Component {
 				});
 			}
 		}
+	}
+
+	private addMentionCounts(container: HTMLElement, person: PersonMetadata) {
+		const settings = getSettings();
+
+		// Check if mention counting is enabled and should be shown in tooltips
+		if (!settings.mentionCountingConfig?.enabled || !settings.mentionCountingConfig?.showInTooltips) {
+			return;
+		}
+
+		const mentionService = getMentionCountingService();
+		if (!mentionService) {
+			return;
+		}
+
+		const mentionCount = mentionService.getMentionCount(person.id);
+		if (!mentionCount || mentionCount.totalMentions === 0) {
+			return;
+		}
+
+		// Create mention counts section
+		const mentionSection = container.createDiv({ cls: "people-metadata-mention-counts" });
+
+		// Total mentions
+		const totalEl = mentionSection.createDiv({
+			cls: "people-metadata-mention-total",
+			text: `📊 ${mentionCount.totalMentions} mention${mentionCount.totalMentions !== 1 ? 's' : ''} total`
+		});
+
+		// Breakdown by type if both types are enabled and present
+		if (settings.mentionCountingConfig.includeTextMentions && settings.mentionCountingConfig.includeTaskMentions) {
+			if (mentionCount.textMentions > 0 || mentionCount.taskMentions > 0) {
+				const breakdownEl = mentionSection.createDiv({ cls: "people-metadata-mention-breakdown" });
+
+				if (mentionCount.textMentions > 0) {
+					breakdownEl.createSpan({
+						cls: "people-metadata-mention-text",
+						text: `📝 ${mentionCount.textMentions} text`
+					});
+				}
+
+				if (mentionCount.taskMentions > 0) {
+					if (mentionCount.textMentions > 0) {
+						breakdownEl.createSpan({ text: " • " });
+					}
+					breakdownEl.createSpan({
+						cls: "people-metadata-mention-tasks",
+						text: `✅ ${mentionCount.taskMentions} tasks`
+					});
+				}
+			}
+		}
+
+		// Add refresh button
+		const refreshButton = mentionSection.createEl("button", {
+			cls: "people-metadata-mention-refresh",
+			text: "🔄 Refresh"
+		});
+
+		refreshButton.addEventListener('click', async (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			refreshButton.textContent = "⏳ Refreshing...";
+			refreshButton.disabled = true;
+
+			try {
+				// Trigger a refresh for this person
+				// This will be implemented when we integrate with the main plugin
+				await this.refreshMentionCounts(person);
+
+				// Update the display
+				container.removeChild(mentionSection);
+				this.addMentionCounts(container, person);
+			} catch (error) {
+				console.error("Error refreshing mention counts:", error);
+				refreshButton.textContent = "❌ Error";
+				setTimeout(() => {
+					refreshButton.textContent = "🔄 Refresh";
+					refreshButton.disabled = false;
+				}, 2000);
+			}
+		});
+	}
+
+	private async refreshMentionCounts(person: PersonMetadata): Promise<void> {
+		// This will be implemented when we integrate with the main plugin
+		// For now, just simulate a delay
+		await new Promise(resolve => setTimeout(resolve, 500));
 	}
 
 	private mountAtCursor(person: PersonMetadata) {

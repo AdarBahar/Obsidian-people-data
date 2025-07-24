@@ -51,6 +51,16 @@ export interface OptimizationConfig {
 	enablePerformanceMonitoring: boolean;
 }
 
+export interface MentionCountingConfig {
+	enabled: boolean;
+	autoRefreshOnFileChange: boolean;
+	showInTooltips: boolean;
+	includeTaskMentions: boolean;
+	includeTextMentions: boolean;
+	refreshIntervalMinutes: number;
+	maxFilesToScanPerBatch: number;
+}
+
 export interface Settings {
 	enableInReadingView: boolean;
 	enableSpellcheck: boolean;
@@ -62,6 +72,7 @@ export interface Settings {
 	enableFileExplorerTags: boolean;
 	autoCompletionConfig: AutoCompletionConfig;
 	optimizationConfig: OptimizationConfig;
+	mentionCountingConfig: MentionCountingConfig;
 }
 
 export const DEFAULT_DEF_FOLDER = "people"
@@ -84,6 +95,15 @@ export const DEFAULT_SETTINGS: Partial<Settings> = {
 		autoRefreshMentionCounts: true,
 		cacheSize: 1000,
 		enablePerformanceMonitoring: true
+	},
+	mentionCountingConfig: {
+		enabled: true,
+		autoRefreshOnFileChange: true,
+		showInTooltips: true,
+		includeTaskMentions: true,
+		includeTextMentions: true,
+		refreshIntervalMinutes: 30,
+		maxFilesToScanPerBatch: 10
 	},
 	autoRegisterNewFiles: true,
 	popoverEvent: PopoverEventSettings.Hover,
@@ -390,6 +410,99 @@ export class SettingsTab extends PluginSettingTab {
 					await this.saveCallback();
 				});
 			});
+
+		new Setting(containerEl)
+			.setHeading()
+			.setName("Mention counting settings");
+
+		new Setting(containerEl)
+			.setName("Enable mention counting")
+			.setDesc("Track how many times people are mentioned across your vault")
+			.addToggle((component) => {
+				component.setValue(this.settings.mentionCountingConfig?.enabled ?? true);
+				component.onChange(async value => {
+					if (!this.settings.mentionCountingConfig) {
+						this.settings.mentionCountingConfig = DEFAULT_SETTINGS.mentionCountingConfig!;
+					}
+					this.settings.mentionCountingConfig.enabled = value;
+					await this.saveCallback();
+					this.display();
+				});
+			});
+
+		if (this.settings.mentionCountingConfig?.enabled !== false) {
+			new Setting(containerEl)
+				.setName("Auto-refresh on file changes")
+				.setDesc("Automatically update mention counts when files are modified")
+				.addToggle((component) => {
+					component.setValue(this.settings.mentionCountingConfig?.autoRefreshOnFileChange ?? true);
+					component.onChange(async value => {
+						if (!this.settings.mentionCountingConfig) {
+							this.settings.mentionCountingConfig = DEFAULT_SETTINGS.mentionCountingConfig!;
+						}
+						this.settings.mentionCountingConfig.autoRefreshOnFileChange = value;
+						await this.saveCallback();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName("Show mention counts in tooltips")
+				.setDesc("Display mention statistics in person tooltips")
+				.addToggle((component) => {
+					component.setValue(this.settings.mentionCountingConfig?.showInTooltips ?? true);
+					component.onChange(async value => {
+						if (!this.settings.mentionCountingConfig) {
+							this.settings.mentionCountingConfig = DEFAULT_SETTINGS.mentionCountingConfig!;
+						}
+						this.settings.mentionCountingConfig.showInTooltips = value;
+						await this.saveCallback();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName("Include task mentions")
+				.setDesc("Count mentions in task lists (- [ ] items)")
+				.addToggle((component) => {
+					component.setValue(this.settings.mentionCountingConfig?.includeTaskMentions ?? true);
+					component.onChange(async value => {
+						if (!this.settings.mentionCountingConfig) {
+							this.settings.mentionCountingConfig = DEFAULT_SETTINGS.mentionCountingConfig!;
+						}
+						this.settings.mentionCountingConfig.includeTaskMentions = value;
+						await this.saveCallback();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName("Include text mentions")
+				.setDesc("Count mentions in regular text content")
+				.addToggle((component) => {
+					component.setValue(this.settings.mentionCountingConfig?.includeTextMentions ?? true);
+					component.onChange(async value => {
+						if (!this.settings.mentionCountingConfig) {
+							this.settings.mentionCountingConfig = DEFAULT_SETTINGS.mentionCountingConfig!;
+						}
+						this.settings.mentionCountingConfig.includeTextMentions = value;
+						await this.saveCallback();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName("Refresh interval (minutes)")
+				.setDesc("How often to automatically refresh mention counts")
+				.addSlider((component) => {
+					component.setLimits(5, 120, 5);
+					component.setValue(this.settings.mentionCountingConfig?.refreshIntervalMinutes ?? 30);
+					component.setDynamicTooltip();
+					component.onChange(async value => {
+						if (!this.settings.mentionCountingConfig) {
+							this.settings.mentionCountingConfig = DEFAULT_SETTINGS.mentionCountingConfig!;
+						}
+						this.settings.mentionCountingConfig.refreshIntervalMinutes = value;
+						await this.saveCallback();
+					});
+				});
+		}
 
 		new Setting(containerEl)
 			.setHeading()

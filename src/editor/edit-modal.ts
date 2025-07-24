@@ -2,7 +2,7 @@ import { App, Modal } from "obsidian";
 import { DefFileUpdater } from "src/core/def-file-updater";
 import { DefFileType } from "src/core/file-type";
 import { TFile } from "obsidian";
-import { PersonMetadata } from "src/core/model";
+import { PersonMetadata, generatePersonId } from "src/core/model";
 
 
 export class EditDefinitionModal {
@@ -35,8 +35,10 @@ export class EditDefinitionModal {
 			if (!file || !(file instanceof TFile)) {
 				throw new Error('File not found or is not a valid TFile');
 			}
+			const fullName = 'Jane Smith';
 			updater.updateMetadata({
-				fullName: 'Jane Smith',
+				id: generatePersonId(fullName, file.path),
+				fullName,
 				position: 'Manager',
 				department: 'Management',
 				notes: 'Notes about Jane Smith.',
