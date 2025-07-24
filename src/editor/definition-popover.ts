@@ -456,7 +456,7 @@ export class DefinitionPopover extends Component {
 			return;
 		}
 
-		const mentionCount = mentionService.getMentionCount(person.id);
+		const mentionCount = mentionService.getMentionCountByName(person.fullName);
 		if (!mentionCount || mentionCount.totalMentions === 0) {
 			return;
 		}

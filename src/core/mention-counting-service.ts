@@ -57,6 +57,14 @@ export class MentionCountingService {
 	}
 
 	/**
+	 * Generate a mention-specific ID based only on the person's name
+	 * This ensures the same person gets the same mention count regardless of which company file they're in
+	 */
+	private getMentionId(fullName: string): string {
+		return fullName.toLowerCase().replace(/\s+/g, '-');
+	}
+
+	/**
 	 * Perform a full scan of all files in the vault
 	 */
 	async performFullScan(people: PersonMetadata[]): Promise<void> {
@@ -65,18 +73,22 @@ export class MentionCountingService {
 
 		// Clear existing counts
 		this.mentionCounts.clear();
-		
+
 		// Initialize mention counts for all people
+		// Use name-based ID for mention counting to handle multi-company people
 		for (const person of people) {
-			this.mentionCounts.set(person.id, {
-				personId: person.id,
-				fullName: person.fullName,
-				totalMentions: 0,
-				textMentions: 0,
-				taskMentions: 0,
-				lastUpdated: Date.now(),
-				mentionsByFile: new Map()
-			});
+			const mentionId = this.getMentionId(person.fullName);
+			if (!this.mentionCounts.has(mentionId)) {
+				this.mentionCounts.set(mentionId, {
+					personId: mentionId,
+					fullName: person.fullName,
+					totalMentions: 0,
+					textMentions: 0,
+					taskMentions: 0,
+					lastUpdated: Date.now(),
+					mentionsByFile: new Map()
+				});
+			}
 		}
 
 		// Get all markdown files
@@ -201,7 +213,8 @@ export class MentionCountingService {
 	 * Add a mention to the counts
 	 */
 	private addMention(person: PersonMetadata, file: TFile, mentionType: 'text' | 'task'): void {
-		const personCount = this.mentionCounts.get(person.id);
+		const mentionId = this.getMentionId(person.fullName);
+		const personCount = this.mentionCounts.get(mentionId);
 		if (!personCount) return;
 
 		// Update total counts
@@ -277,9 +290,24 @@ export class MentionCountingService {
 
 	/**
 	 * Get mention count for a specific person
+	 * Can accept either a person ID or a person name
 	 */
-	getMentionCount(personId: string): MentionCount | undefined {
-		return this.mentionCounts.get(personId);
+	getMentionCount(personIdOrName: string): MentionCount | undefined {
+		// First try direct lookup (for backward compatibility)
+		let result = this.mentionCounts.get(personIdOrName);
+		if (result) return result;
+
+		// If not found, try as a person name
+		const mentionId = this.getMentionId(personIdOrName);
+		return this.mentionCounts.get(mentionId);
+	}
+
+	/**
+	 * Get mention count by person name (preferred method)
+	 */
+	getMentionCountByName(fullName: string): MentionCount | undefined {
+		const mentionId = this.getMentionId(fullName);
+		return this.mentionCounts.get(mentionId);
 	}
 
 	/**
