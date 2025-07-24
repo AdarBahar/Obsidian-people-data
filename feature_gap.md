@@ -28,7 +28,7 @@
 19. **Professional UX** - ✅ Full implementation (clean interfaces, proper sizing)
 20. **About People Metadata Modal** - ✅ Full implementation (comprehensive plugin information)
 21. **Performance Optimization System** - ✅ Full implementation (advanced search engine, caching, monitoring)
-22. **Mention Counting System** - ✅ Full implementation (smart detection, real-time updates, analytics)
+22. **Mention Counting System** - ✅ Full implementation (smart detection, real-time updates, analytics, multi-occurrence detection)
 
 **File Format Support:**
 - ✅ **Consolidated Files** - Multiple people per company file + tests
@@ -82,7 +82,7 @@
 - ✅ Manual refresh button in tooltips
 - ✅ Auto-refresh setting for large vaults
 
-> **Status**: Complete implementation with smart task/text detection, real-time file monitoring, tooltip integration, and comprehensive analytics.
+> **Status**: Complete implementation with smart task/text detection, real-time file monitoring, tooltip integration, and comprehensive analytics. **Recently enhanced** with robust multi-occurrence detection, whole-word matching, and multi-company support.
 
 #### **6. Performance Optimization System (6 sub-features) - ✅ COMPLETED**
 - ✅ OptimizedSearchEngine with multi-index system (names, companies, prefixes, fuzzy matching)
@@ -182,7 +182,7 @@
 - ✅ "Toggle optimized search" - Enable/disable optimization
 - ✅ "Show search performance statistics" - Performance metrics
 - ✅ "Rebuild optimized search indexes" - Force index rebuild
-- ✅ "Refresh mention counts" - Update mention statistics
+- ✅ "Refresh mention counts" - Update mention statistics (with detailed debug logging)
 - ✅ "Show mention counting statistics" - View analytics and top mentioned people
 
 **Missing Commands:**
@@ -342,6 +342,23 @@
 - **Features Implemented**: 22 out of 46+ total features (**48% complete**)
 - **Major Systems**: Auto-completion, Multi-company support, Interactive tooltips, About modal, Performance optimization, Mention counting
 - **Commands Available**: 15 working commands including diagnostics, about, performance tools, and analytics
+
+### 🔧 **Recent Bug Fixes & Enhancements**
+
+**Mention Counting System Improvements (Latest):**
+- ✅ **Multi-occurrence detection**: Now finds ALL mentions of a person in each line (not just the first)
+- ✅ **Whole-word matching**: Prevents false positives (e.g., "Smith" won't match "Smithson")
+- ✅ **Case-insensitive detection**: Finds variations like "john smith", "John Smith", "JOHN SMITH"
+- ✅ **Multi-company support**: Mention counts appear on ALL tabs for people in multiple companies
+- ✅ **Comprehensive coverage**: Headers, titles, body text, task items, all content types
+- ✅ **Debug logging**: Detailed console output for troubleshooting mention detection
+- ✅ **Robust error handling**: Continues scanning even if individual files fail
+
+**Interactive Tooltip Enhancements:**
+- ✅ **Proper hover behavior**: Tooltips stay open when mouse is over tooltip content
+- ✅ **Multi-company tabs**: Clean tab interface for people in multiple companies
+- ✅ **Mention count display**: Professional analytics with breakdown by type
+- ✅ **Refresh functionality**: Manual refresh buttons with loading states
 - **Settings**: Comprehensive configuration for all features including optimization
 - **Documentation**: Complete README with usage examples and troubleshooting
 - **Performance**: Optimized for large datasets (10,000+ people) with 10x speed improvements
@@ -359,6 +376,14 @@
 - **Cache Performance**: 95%+ hit rates for repeated operations
 - **Scalability**: Linear scaling for datasets up to 10,000+ people
 - **Real-time Monitoring**: Performance statistics and diagnostic tools
+
+### 🔧 **Technical Quality Improvements**
+- **Mention Detection Accuracy**: Comprehensive multi-occurrence detection with whole-word matching
+- **Multi-Company Support**: Consistent data across all company contexts and tabs
+- **Error Handling**: Robust startup, comprehensive diagnostics, and graceful failure recovery
+- **Debug Capabilities**: Detailed console logging for troubleshooting and system analysis
+- **Data Integrity**: Reliable mention counting with proper aggregation and deduplication
+- **Cross-Platform**: Mobile compatibility with touch-friendly interfaces
 
 ---
 
