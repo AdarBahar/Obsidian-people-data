@@ -97,10 +97,13 @@ export class MentionCountingService {
 		this.stats.totalMentionsFound = 0;
 		this.stats.filesWithMentions = 0;
 
+		console.log(`Found ${markdownFiles.length} markdown files in vault`);
+
 		// Scan each file
 		for (const file of markdownFiles) {
 			// Skip people definition files
 			if (this.isPeopleDefinitionFile(file)) {
+				console.log(`Skipping people definition file: ${file.path}`);
 				continue;
 			}
 
@@ -124,20 +127,31 @@ export class MentionCountingService {
 			const content = await this.vault.read(file);
 			const lines = content.split('\n');
 			let fileMentionsFound = false;
+			let fileMentionCount = 0;
+
+			console.log(`Scanning file: ${file.path} (${lines.length} lines)`);
 
 			for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
 				const line = lines[lineIndex];
+				if (line.trim().length === 0) continue; // Skip empty lines
+
 				const mentions = this.findMentionsInLine(line, people, lineIndex);
+
+				if (mentions.length > 0) {
+					console.log(`Line ${lineIndex + 1}: "${line.substring(0, 100)}..." -> Found ${mentions.length} mentions`);
+				}
 
 				for (const mention of mentions) {
 					this.addMention(mention.person, file, mention.mentionType);
 					fileMentionsFound = true;
+					fileMentionCount++;
 					this.stats.totalMentionsFound++;
 				}
 			}
 
 			if (fileMentionsFound) {
 				this.stats.filesWithMentions++;
+				console.log(`File ${file.path}: Found ${fileMentionCount} total mentions`);
 			}
 		} catch (error) {
 			console.error(`Error scanning file ${file.path}:`, error);
@@ -145,39 +159,84 @@ export class MentionCountingService {
 	}
 
 	/**
-	 * Find mentions in a single line using smart detection
+	 * Find mentions in a single line using comprehensive detection
 	 */
 	private findMentionsInLine(line: string, people: PersonMetadata[], lineNumber: number): Array<{person: PersonMetadata, mentionType: 'text' | 'task'}> {
 		const mentions: Array<{person: PersonMetadata, mentionType: 'text' | 'task'}> = [];
-		
+
 		// Determine if this is a task line
 		const isTaskLine = this.isTaskLine(line);
-		
-		// Use smart line scanner for efficient name detection
-		const scanner = getSmartLineScanner();
-		if (scanner) {
-			const scanResults = scanner.scanLine(line, people, true);
-			
-			for (const result of scanResults) {
-				mentions.push({
-					person: result.person,
-					mentionType: isTaskLine ? 'task' : 'text'
-				});
-			}
-		} else {
-			// Fallback to simple string matching
-			for (const person of people) {
-				const nameIndex = line.toLowerCase().indexOf(person.fullName.toLowerCase());
-				if (nameIndex !== -1) {
-					mentions.push({
-						person: person,
-						mentionType: isTaskLine ? 'task' : 'text'
-					});
-				}
-			}
+
+		// Use comprehensive mention detection for each person
+		for (const person of people) {
+			const personMentions = this.findPersonMentionsInLine(line, person, isTaskLine);
+			mentions.push(...personMentions);
 		}
 
 		return mentions;
+	}
+
+	/**
+	 * Find all mentions of a specific person in a line (handles multiple occurrences)
+	 */
+	private findPersonMentionsInLine(line: string, person: PersonMetadata, isTaskLine: boolean): Array<{person: PersonMetadata, mentionType: 'text' | 'task'}> {
+		const mentions: Array<{person: PersonMetadata, mentionType: 'text' | 'task'}> = [];
+		const mentionType = isTaskLine ? 'task' : 'text';
+
+		// Convert to lowercase for case-insensitive matching
+		const lowerLine = line.toLowerCase();
+		const lowerName = person.fullName.toLowerCase();
+
+		// Find all occurrences of the person's name in the line
+		let startIndex = 0;
+		let foundIndex = lowerLine.indexOf(lowerName, startIndex);
+
+		while (foundIndex !== -1) {
+			// Check if this is a whole word match (not part of another word)
+			if (this.isWholeWordMatch(line, foundIndex, person.fullName.length)) {
+				mentions.push({
+					person: person,
+					mentionType: mentionType
+				});
+
+				// Debug logging for found mentions
+				const contextStart = Math.max(0, foundIndex - 10);
+				const contextEnd = Math.min(line.length, foundIndex + person.fullName.length + 10);
+				const context = line.substring(contextStart, contextEnd);
+				console.log(`  Found "${person.fullName}" in: "...${context}..." (${mentionType})`);
+			}
+
+			// Look for next occurrence
+			startIndex = foundIndex + 1;
+			foundIndex = lowerLine.indexOf(lowerName, startIndex);
+		}
+
+		return mentions;
+	}
+
+	/**
+	 * Check if a found name is a whole word match (not part of another word)
+	 */
+	private isWholeWordMatch(text: string, startIndex: number, nameLength: number): boolean {
+		const endIndex = startIndex + nameLength;
+
+		// Check character before the match
+		if (startIndex > 0) {
+			const charBefore = text[startIndex - 1];
+			if (/[a-zA-Z0-9]/.test(charBefore)) {
+				return false; // Part of another word
+			}
+		}
+
+		// Check character after the match
+		if (endIndex < text.length) {
+			const charAfter = text[endIndex];
+			if (/[a-zA-Z0-9]/.test(charAfter)) {
+				return false; // Part of another word
+			}
+		}
+
+		return true; // It's a whole word match
 	}
 
 	/**
