@@ -1,5 +1,6 @@
 import { App, Modal, Notice, TFile } from "obsidian";
 import { getAvailableColorNames, parseColorValue } from "src/core/company-colors";
+import { CompanyCSVImportModal, CompanyCSVExportModal } from "./company-csv-modal";
 
 export interface CompanyConfig {
 	name: string;
@@ -145,6 +146,7 @@ export class CompanyConfigModal extends Modal {
 		// 1. Company Name Section (for new companies)
 		if (!company.file) {
 			this.createCompanyNameSection(container, company);
+			this.createNewCompanyCSVSection(container, company);
 		}
 
 		// 2. Underline Color Section
@@ -156,7 +158,12 @@ export class CompanyConfigModal extends Modal {
 		// 4. Company Logo Section
 		this.createLogoSection(container, company);
 
-		// 5. Save/Cancel buttons
+		// 5. CSV Import/Export buttons (for existing companies)
+		if (company.file) {
+			this.createCSVButtons(container, company);
+		}
+
+		// 6. Save/Cancel buttons
 		this.createActionButtons(container, company);
 	}
 
@@ -193,6 +200,56 @@ export class CompanyConfigModal extends Modal {
 				this.updateActionButtons(container, company);
 			}
 		};
+	}
+
+	private createNewCompanyCSVSection(container: HTMLElement, company: CompanyConfig) {
+		const section = container.createDiv({ cls: "company-config-section" });
+		section.createEl("h4", { text: "Import People (Optional)" });
+
+		const descEl = section.createDiv({ cls: "company-config-csv-desc" });
+		descEl.innerHTML = `
+			<p>You can import people to this new company from a CSV file.</p>
+			<p>Required column: <code>Full Name</code></p>
+			<p>Optional: <code>Position</code>, <code>Department</code>, <code>Description</code>, <code>Email</code>, <code>Phone Number</code></p>
+		`;
+
+		const buttonContainer = section.createDiv({ cls: "company-config-csv-buttons" });
+		const importButton = buttonContainer.createEl("button", {
+			text: "📥 Import CSV to New Company",
+			cls: "company-config-csv-btn"
+		});
+		importButton.onclick = () => this.openNewCompanyCSVImport(company);
+	}
+
+	private openNewCompanyCSVImport(company: CompanyConfig) {
+		// First, we need to save the company to create the file
+		if (!company.name || company.name.trim() === "" || company.name === "New Company") {
+			new Notice("Please enter a company name first");
+			return;
+		}
+
+		// Check if company already exists
+		const existingCompany = this.companies.find(c => c.name === company.name && c.file);
+		if (existingCompany) {
+			new Notice(`Company "${company.name}" already exists`);
+			return;
+		}
+
+		// Save the company first, then open CSV import
+		this.saveNewCompanyAndImportCSV(company);
+	}
+
+	private async saveNewCompanyAndImportCSV(company: CompanyConfig) {
+		try {
+			const success = await this.saveNewCompany(company);
+			if (success && company.file) {
+				// Now open the CSV import modal
+				const importModal = new CompanyCSVImportModal(this.app, company.file, company.name);
+				importModal.open();
+			}
+		} catch (error) {
+			new Notice(`Error creating company: ${error.message}`);
+		}
 	}
 
 	private createColorSection(container: HTMLElement, company: CompanyConfig) {
@@ -398,6 +455,54 @@ export class CompanyConfigModal extends Modal {
 		// Current logo preview
 		const previewContainer = section.createDiv({ cls: "company-config-logo-preview" });
 		this.updateLogoPreview(previewContainer, state.currentConfig.logo || "");
+	}
+
+	private createCSVButtons(container: HTMLElement, company: CompanyConfig) {
+		const section = container.createDiv({ cls: "company-config-section" });
+		section.createEl("h4", { text: "CSV Import/Export" });
+
+		const buttonContainer = section.createDiv({ cls: "company-config-csv-buttons" });
+
+		// Import CSV button
+		const importButton = buttonContainer.createEl("button", {
+			text: "📥 Import CSV",
+			cls: "company-config-csv-btn"
+		});
+		importButton.onclick = () => this.openCSVImport(company);
+
+		// Export CSV button
+		const exportButton = buttonContainer.createEl("button", {
+			text: "📤 Export CSV",
+			cls: "company-config-csv-btn"
+		});
+		exportButton.onclick = () => this.openCSVExport(company);
+
+		// Add description
+		const descEl = section.createDiv({ cls: "company-config-csv-desc" });
+		descEl.innerHTML = `
+			<p><strong>Import:</strong> Add people to ${company.name} from CSV</p>
+			<p><strong>Export:</strong> Download ${company.name} people as CSV</p>
+		`;
+	}
+
+	private openCSVImport(company: CompanyConfig) {
+		if (!company.file) {
+			new Notice("Company file not found");
+			return;
+		}
+
+		const importModal = new CompanyCSVImportModal(this.app, company.file, company.name);
+		importModal.open();
+	}
+
+	private openCSVExport(company: CompanyConfig) {
+		if (!company.file) {
+			new Notice("Company file not found");
+			return;
+		}
+
+		const exportModal = new CompanyCSVExportModal(this.app, company.file, company.name);
+		exportModal.open();
 	}
 
 	private createActionButtons(container: HTMLElement, company: CompanyConfig) {
@@ -952,7 +1057,7 @@ export class CompanyConfigModal extends Modal {
 		// Combine frontmatter and body
 		const newContent = newFrontmatter ? `${newFrontmatter}\n\n${bodyContent}` : bodyContent;
 		if (company.file) {
-			await this.app.vault.modify(company.file, newContent);
+			await this.app.vault.process(company.file, () => newContent);
 		}
 	}
 

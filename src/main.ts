@@ -20,6 +20,7 @@ import { initCompanyManager, getCompanyManager } from './core/company-manager';
 import { CompanyConfigModal } from './editor/company-config-modal';
 import { initNameAutoCompletion, NameAutoCompletion } from './editor/auto-completion';
 import { AboutPeopleMetadataModal } from './editor/about-modal';
+import { CSVImportModal } from './editor/csv-import-modal';
 import { initOptimizedSearchEngine, getOptimizedSearchEngine } from './core/optimized-search-engine';
 import { initSmartLineScanner, getSmartLineScanner } from './core/smart-line-scanner';
 import { initMentionCountingService, getMentionCountingService } from './core/mention-counting-service';
@@ -78,6 +79,9 @@ export default class NoteDefinition extends Plugin {
 
 		// Load definitions and apply company colors immediately
 		await this.refreshDefinitions();
+
+		// Check if People folder exists and show notice if missing
+		this.validatePeopleFolderOnStartup();
 
 		// Delay file explorer decoration until workspace is ready
 		// This is a non-critical feature that adds visual tags to files
@@ -241,6 +245,15 @@ export default class NoteDefinition extends Plugin {
 			callback: () => {
 				const aboutModal = new AboutPeopleMetadataModal(this.app);
 				aboutModal.open();
+			}
+		});
+
+		this.addCommand({
+			id: "csv-import",
+			name: "Import People from CSV",
+			callback: () => {
+				const csvImportModal = new CSVImportModal(this.app);
+				csvImportModal.open();
 			}
 		});
 
@@ -797,6 +810,21 @@ ${topMentioned.map((item, index) => `${index + 1}. ${item.person}: ${item.count}
 		closeBtn.onclick = () => modal.close();
 
 		modal.open();
+	}
+
+	private validatePeopleFolderOnStartup(): void {
+		// Use setTimeout to delay the check slightly after plugin load
+		setTimeout(() => {
+			const folderPath = this.context.settings.defFolder;
+			const folder = this.app.vault.getFolderByPath(folderPath);
+
+			if (!folder) {
+				new Notice(
+					`⚠️ People folder "${folderPath}" not found. Please create it or configure a different folder in plugin settings.`,
+					8000 // Show for 8 seconds
+				);
+			}
+		}, 2000); // Wait 2 seconds after plugin load
 	}
 
 	onunload() {

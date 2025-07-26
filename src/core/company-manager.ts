@@ -134,48 +134,34 @@ export class CompanyManager {
 			throw new Error("Cannot update company config without file");
 		}
 		const content = await this.app.vault.read(file);
-		
-		// Parse existing frontmatter
-		const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
-		const match = content.match(frontmatterRegex);
-		
-		let frontmatterContent = "";
-		let bodyContent = content;
+		const fileMetadata = this.app.metadataCache.getFileCache(file);
 
-		if (match) {
-			frontmatterContent = match[1];
-			bodyContent = content.slice(match[0].length);
+		// Get body content without frontmatter
+		let bodyContent = content;
+		const fmPos = fileMetadata?.frontmatterPosition;
+		if (fmPos) {
+			bodyContent = content.slice(fmPos.end.offset + 1);
 		}
 
-		// Parse frontmatter lines
-		const frontmatterLines = frontmatterContent.split('\n').filter(line => line.trim());
-		const frontmatterMap = new Map<string, string>();
-		
-		frontmatterLines.forEach(line => {
-			const colonIndex = line.indexOf(':');
-			if (colonIndex > 0) {
-				const key = line.slice(0, colonIndex).trim();
-				const value = line.slice(colonIndex + 1).trim();
-				frontmatterMap.set(key, value);
+		// Update frontmatter using Obsidian's API
+		await this.app.fileManager.processFrontMatter(file, (fm) => {
+			// Update color
+			if (config.color) {
+				fm.color = config.color;
+			} else {
+				delete fm.color;
+			}
+
+			// Ensure def-type is set
+			if (!fm['def-type']) {
+				fm['def-type'] = 'consolidated';
 			}
 		});
-
-		// Update color
-		if (config.color) {
-			frontmatterMap.set('color', `"${config.color}"`);
-		} else {
-			frontmatterMap.delete('color');
-		}
-
-		// Ensure def-type is set
-		if (!frontmatterMap.has('def-type')) {
-			frontmatterMap.set('def-type', 'consolidated');
-		}
 
 		// Update logo in body content
 		const logoRegex = /^!\[.*?\]\(.*?\)/m;
 		const currentLogo = bodyContent.match(logoRegex)?.[0] || '';
-		
+
 		if (currentLogo && config.logo) {
 			// Replace existing logo
 			bodyContent = bodyContent.replace(logoRegex, config.logo);
@@ -187,20 +173,20 @@ export class CompanyManager {
 			bodyContent = config.logo + '\n' + bodyContent.trimStart();
 		}
 
-		// Rebuild frontmatter
-		let newFrontmatter = '';
-		if (frontmatterMap.size > 0) {
-			newFrontmatter = '---\n';
-			for (const [key, value] of frontmatterMap) {
-				newFrontmatter += `${key}: ${value}\n`;
-			}
-			newFrontmatter += '---';
+		// Read the updated content after frontmatter processing
+		const updatedContent = await this.app.vault.read(file);
+		const updatedFileMetadata = this.app.metadataCache.getFileCache(file);
+
+		// Get the frontmatter part
+		let frontmatterPart = '';
+		const updatedFmPos = updatedFileMetadata?.frontmatterPosition;
+		if (updatedFmPos) {
+			frontmatterPart = updatedContent.slice(0, updatedFmPos.end.offset + 1);
 		}
 
-		const newContent = newFrontmatter + bodyContent;
-		if (file) {
-			await this.app.vault.modify(file, newContent);
-		}
+		// Combine updated frontmatter with updated body
+		const newContent = frontmatterPart + bodyContent;
+		await this.app.vault.process(file, () => newContent);
 	}
 
 	/**

@@ -274,6 +274,49 @@
 }
 
 /* Company Configuration Modal Styles */
+
+/* CSV Import/Export Buttons */
+.company-config-csv-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+}
+
+.company-config-csv-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+.company-config-csv-btn:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.company-config-csv-desc {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.company-config-csv-desc p {
+    margin: 0.25rem 0;
+}
+
+.company-config-csv-desc code {
+    background: var(--background-primary);
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-family: var(--font-monospace);
+}
 .company-config-container {
 	max-height: 60vh;
 	overflow-y: auto;
@@ -1264,4 +1307,11 @@
 
 .people-metadata-tab-content .people-metadata-person-notes {
 	margin-bottom: var(--size-2-1);
+}
+
+/* Settings indentation styles */
+.setting-item-indent {
+	margin-left: var(--size-4-4);
+	border-left: 2px solid var(--background-modifier-border);
+	padding-left: var(--size-4-2);
 }

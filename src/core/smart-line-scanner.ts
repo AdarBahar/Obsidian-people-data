@@ -31,7 +31,12 @@ export class SmartLineScanner {
 
 	scanLine(line: string, allPeople: PersonMetadata[], useOptimized: boolean = true): ScanResult[] {
 		const startTime = performance.now();
-		
+
+		// Handle null/undefined lines
+		if (!line || typeof line !== 'string') {
+			return [];
+		}
+
 		// Check cache first
 		const cacheKey = this.generateCacheKey(line);
 		const cached = this.lineCache.get(cacheKey);
@@ -356,5 +361,8 @@ export function initSmartLineScanner(): SmartLineScanner {
 }
 
 export function getSmartLineScanner(): SmartLineScanner {
+	if (!smartLineScanner) {
+		smartLineScanner = new SmartLineScanner();
+	}
 	return smartLineScanner;
 }

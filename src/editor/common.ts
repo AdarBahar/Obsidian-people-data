@@ -25,9 +25,8 @@ export function getDecorationAttrs(phrase: string, companyName?: string): { [key
 		attributes.onmouseenter = triggerFunc;
 		// Note: mouseleave is now handled by the popover itself for better interaction
 	}
-	if (!settings.enableSpellcheck) {
-		attributes.spellcheck = "false";
-	}
+	// Always disable spellcheck for people names
+	attributes.spellcheck = "false";
 	
 	// Add company data attribute for CSS targeting
 	if (companyName) {
