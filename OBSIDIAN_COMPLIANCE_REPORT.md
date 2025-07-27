@@ -1,8 +1,8 @@
 # 🛡️ Obsidian Compliance Report
 
-**Plugin**: People Metadata Plugin  
-**Version**: 1.1.0  
-**Review Date**: 2025-01-24  
+**Plugin**: People Metadata Plugin
+**Version**: 1.2.0
+**Review Date**: 2025-01-26
 **Compliance Status**: ✅ **FULLY COMPLIANT**
 
 ---
@@ -192,6 +192,14 @@ The People Metadata Plugin has been thoroughly reviewed against all Obsidian tea
 - **Solution**: Replaced with proper `app.metadataCache.getFileCache()` usage
 - **Files Fixed**: `company-manager.ts`
 - **Status**: ✅ RESOLVED
+
+### **Recent Changes Review (v1.2.0)**
+- **Settings Reorganization**: All element creation uses proper Obsidian APIs (`createEl`, `createDiv`)
+- **People Folder Validation**: Proper async/await usage, no global variables, compliant element creation
+- **Modal Implementation**: Uses Obsidian's `Modal` class correctly with proper content element handling
+- **Event Handling**: All event listeners properly attached using `addEventListener`
+- **File Operations**: Uses `app.vault.createFolder()` and `app.vault.getFolderByPath()` correctly
+- **Status**: ✅ ALL COMPLIANT
 
 ---
 

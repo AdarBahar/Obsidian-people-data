@@ -12,15 +12,17 @@ This file is for testing the new "Add a Person" modal functionality.
 ## Expected Behavior
 
 - Modal title should be "Add a Person"
-- Fields should be:
+- Fields should be (in order):
+  - **Choose Company** (dropdown - at the top)
   - Full Name (placeholder: "John Smith")
-  - Job Title (placeholder: "Dev Team Leader") 
+  - Job Title (placeholder: "Dev Team Leader")
   - Department (placeholder: "Engineering")
-  - Description (placeholder: "Add description here")
+  - Description (optional) (placeholder: "Add description here (optional)")
 - Company dropdown should show:
   - "Create a new Company" as first option
   - List of existing companies by name (not file path)
 - No "Definition file type" field should be visible
+- Description field is optional and not required for form submission
 
 ## Test Person Data
 

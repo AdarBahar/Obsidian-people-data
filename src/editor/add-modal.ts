@@ -21,6 +21,24 @@ export class AddDefinitionModal {
 	open(text?: string) {
 		this.submitting = false;
 		this.modal.setTitle("Add a person");
+
+		// Move "Choose Company" to the top
+		const defManager = getDefFileManager();
+		this.defFilePickerSetting = new Setting(this.modal.contentEl)
+			.setName("Choose company")
+			.addDropdown(component => {
+				// Add "Create a new Company" option first
+				component.addOption("__CREATE_NEW__", "Create a new company");
+
+				// Add existing companies
+				const defFiles = defManager.getConsolidatedDefFiles();
+				defFiles.forEach(file => {
+					const companyName = file.basename;
+					component.addOption(file.path, companyName);
+				});
+				this.defFilePicker = component;
+			});
+
 		this.modal.contentEl.createDiv({
 			cls: "people-metadata-edit-modal-section-header",
 			text: "Full name"
@@ -54,30 +72,14 @@ export class AddDefinitionModal {
 		});
 		this.modal.contentEl.createDiv({
 			cls: "people-metadata-edit-modal-section-header",
-			text: "Description"
+			text: "Description (optional)"
 		});
 		const descriptionText = this.modal.contentEl.createEl("textarea", {
 			cls: 'people-metadata-edit-modal-textarea',
 			attr: {
-				placeholder: "Add description here"
+				placeholder: "Add description here (optional)"
 			},
 		});
-
-		const defManager = getDefFileManager();
-		this.defFilePickerSetting = new Setting(this.modal.contentEl)
-			.setName("Choose company")
-			.addDropdown(component => {
-				// Add "Create a new Company" option first
-				component.addOption("__CREATE_NEW__", "Create a new company");
-
-				// Add existing companies
-				const defFiles = defManager.getConsolidatedDefFiles();
-				defFiles.forEach(file => {
-					const companyName = file.basename;
-					component.addOption(file.path, companyName);
-				});
-				this.defFilePicker = component;
-			});
 
 		const button = this.modal.contentEl.createEl("button", {
 			text: "Save",
@@ -91,10 +93,6 @@ export class AddDefinitionModal {
 			// Validate required fields
 			if (!fullNameText.value.trim()) {
 				new Notice("Please enter a full name");
-				return;
-			}
-			if (!descriptionText.value.trim()) {
-				new Notice("Please enter a description");
 				return;
 			}
 			if (!this.defFilePicker.getValue()) {
@@ -127,7 +125,7 @@ export class AddDefinitionModal {
 					fullName: fullNameText.value.trim(),
 					position: jobTitleText.value.trim() || "",
 					department: departmentText.value.trim() || "",
-					notes: descriptionText.value.trim(),
+					notes: descriptionText.value.trim() || "",
 					file: targetFile,
 					fileType: DefFileType.Consolidated
 				});
