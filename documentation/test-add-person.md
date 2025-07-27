@@ -91,6 +91,29 @@ This file is for testing the new "Add a Person" modal functionality.
   - Disappears when user starts typing again
   - Blocks form submission if company name already exists
 
+## Debug Mode Testing
+
+### Enabling Debug Mode
+- **Settings**: Go to Settings → People Metadata → Core Setup → Debug mode (toggle on)
+- **Command**: Use Command Palette → "People Metadata: Toggle debug mode"
+- **Confirmation**: Notice will show "People Metadata debug mode enabled/disabled"
+
+### Debug Console Output
+When debug mode is enabled, the browser console will show detailed logging:
+- **Modal Opening**: "People-metadata: Opening Add Person modal"
+- **Company Validation**: "People-metadata: Validating company name" with details
+- **Person Creation**: "People-metadata: INFO: Starting person creation process" with form data
+- **Company Creation**: "People-metadata: Creating new company file" with company name
+- **Timing**: "People-metadata: TIMING: Person creation completed in XXms"
+- **Errors**: "People-metadata: ERROR: [error details]" (always shown regardless of debug mode)
+
+### Testing Debug Mode
+1. Enable debug mode in settings
+2. Open browser console (F12)
+3. Use Add Person modal
+4. Observe detailed logging with "People-metadata:" prefix
+5. Disable debug mode and verify logging stops
+
 ## Test Person Data
 
 **Full Name**: Alice Johnson

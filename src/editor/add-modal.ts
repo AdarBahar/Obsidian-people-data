@@ -3,6 +3,7 @@ import { getDefFileManager } from "src/core/def-file-manager";
 import { DefFileUpdater } from "src/core/def-file-updater";
 import { DefFileType } from "src/core/file-type";
 import { registerDefFile } from "./def-file-registration";
+import { debugLog, debugInfo, debugError, debugTimer } from "src/util/debug";
 
 
 export class AddDefinitionModal {
@@ -19,6 +20,7 @@ export class AddDefinitionModal {
 	}
 
 	open(text?: string) {
+		debugLog("Opening Add Person modal", { text });
 		this.submitting = false;
 		this.modal.setTitle("Add a person");
 
@@ -70,6 +72,8 @@ export class AddDefinitionModal {
 
 		// Company name validation functions
 		const validateCompanyName = (companyName: string): { isValid: boolean; message: string } => {
+			debugLog("Validating company name", { companyName });
+
 			if (!companyName.trim()) {
 				return { isValid: false, message: "" }; // Empty is handled by main validation
 			}
@@ -78,18 +82,25 @@ export class AddDefinitionModal {
 			const existingFiles = defManager.getConsolidatedDefFiles();
 			const normalizedName = companyName.trim().toLowerCase();
 
+			debugLog("Checking against existing companies", {
+				normalizedName,
+				existingCount: existingFiles.length
+			});
+
 			// Check if company name already exists (case-insensitive)
 			const exists = existingFiles.some(file =>
 				file.basename.toLowerCase() === normalizedName
 			);
 
 			if (exists) {
+				debugLog("Company name conflict detected", { companyName });
 				return {
 					isValid: false,
 					message: `⚠️ Company "${companyName.trim()}" already exists. Please choose a different name.`
 				};
 			}
 
+			debugLog("Company name is available", { companyName });
 			return { isValid: true, message: `✅ "${companyName.trim()}" is available.` };
 		};
 
@@ -242,6 +253,16 @@ export class AddDefinitionModal {
 				}
 			}
 
+			debugInfo("Starting person creation process", {
+				fullName: fullNameText.value.trim(),
+				jobTitle: jobTitleText.value.trim(),
+				department: departmentText.value.trim(),
+				hasDescription: !!descriptionText.value.trim(),
+				selectedCompany: selectedValue,
+				isNewCompany: selectedValue === "__CREATE_NEW__"
+			});
+
+			const timer = debugTimer("Person creation");
 			this.submitting = true;
 			button.textContent = "Saving...";
 			button.disabled = true;
@@ -251,9 +272,11 @@ export class AddDefinitionModal {
 
 				if (selectedValue === "__CREATE_NEW__") {
 					// Create a new company file
+					debugLog("Creating new company file", { companyName: companyNameText.value.trim() });
 					targetFile = await this.createNewCompanyFile(companyNameText.value.trim());
 				} else {
 					// Use existing company file
+					debugLog("Using existing company file", { selectedValue });
 					const defFileManager = getDefFileManager();
 					targetFile = defFileManager.globalDefFiles.get(selectedValue);
 				}
@@ -273,9 +296,11 @@ export class AddDefinitionModal {
 					fileType: DefFileType.Consolidated
 				});
 
+				debugInfo("Person created successfully");
+				timer(); // Log timing
 				this.modal.close();
 			} catch (error) {
-				console.error("Error adding person:", error);
+				debugError("Error adding person", error);
 				showError("❌ Failed to add person. Please try again.");
 			} finally {
 				this.submitting = false;

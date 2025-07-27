@@ -80,6 +80,7 @@ export interface Settings {
 	autoCompletionConfig: AutoCompletionConfig;
 	optimizationConfig: OptimizationConfig;
 	mentionCountingConfig: MentionCountingConfig;
+	debugMode: boolean;
 }
 
 export const DEFAULT_DEF_FOLDER = "people"
@@ -88,6 +89,7 @@ export const DEFAULT_SETTINGS: Partial<Settings> = {
 	enableInReadingView: true,
 	enableSpellcheck: false,
 	enableFileExplorerTags: false, // Disabled by default to prevent errors
+	debugMode: false, // Debug mode off by default
 	autoCompletionConfig: {
 		enabled: true,
 		triggerPattern: "@name:",
@@ -195,6 +197,18 @@ export class SettingsTab extends PluginSettingTab {
 				component.setValue(this.settings.enableFileExplorerTags ?? false);
 				component.onChange(async value => {
 					this.settings.enableFileExplorerTags = value;
+					await this.saveCallback();
+				});
+			});
+
+		new Setting(containerEl)
+			.setClass("setting-item-indent")
+			.setName("Debug mode")
+			.setDesc("Enable debug logging to the browser console. All debug messages will be prefixed with 'People-metadata:'. Useful for troubleshooting issues.")
+			.addToggle((component) => {
+				component.setValue(this.settings.debugMode ?? false);
+				component.onChange(async value => {
+					this.settings.debugMode = value;
 					await this.saveCallback();
 				});
 			});

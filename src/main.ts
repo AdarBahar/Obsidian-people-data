@@ -258,6 +258,19 @@ export default class NoteDefinition extends Plugin {
 		});
 
 		this.addCommand({
+			id: "toggle-debug-mode",
+			name: "Toggle debug mode",
+			callback: async () => {
+				const currentDebugMode = this.context.settings.debugMode ?? false;
+				this.context.settings.debugMode = !currentDebugMode;
+				await this.saveSettings();
+
+				const status = this.context.settings.debugMode ? "enabled" : "disabled";
+				new Notice(`People Metadata debug mode ${status}`);
+			}
+		});
+
+		this.addCommand({
 			id: "toggle-optimized-search",
 			name: "Toggle optimized search",
 			callback: async () => {
