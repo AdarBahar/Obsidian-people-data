@@ -24,6 +24,23 @@ This file is for testing the new "Add a Person" modal functionality.
 - No "Definition file type" field should be visible
 - Description field is optional and not required for form submission
 
+## Validation Behavior
+
+- **Inline Error Display**: Validation errors appear in a red error banner at the top of the modal
+- **Error Messages**:
+  - Empty full name: "⚠️ Please enter a full name"
+  - No company selected: "⚠️ Please choose a company"
+  - Save failures: "❌ Failed to add person. Please try again."
+  - Company creation failures: "❌ Failed to get or create company file"
+- **Button States**:
+  - Normal: "Save" button enabled
+  - Submitting: "Saving..." button disabled
+  - After completion/error: Returns to "Save" enabled
+- **Error Behavior**:
+  - Errors appear with smooth animation
+  - Previous errors are cleared when form is resubmitted
+  - Error scrolls into view if needed
+
 ## Test Person Data
 
 **Full Name**: Alice Johnson

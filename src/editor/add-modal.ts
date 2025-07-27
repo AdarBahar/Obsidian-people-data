@@ -22,6 +22,12 @@ export class AddDefinitionModal {
 		this.submitting = false;
 		this.modal.setTitle("Add a person");
 
+		// Add error display area at the top
+		const errorContainer = this.modal.contentEl.createDiv({
+			cls: "people-metadata-error-container",
+			attr: { style: "display: none;" }
+		});
+
 		// Move "Choose Company" to the top
 		const defManager = getDefFileManager();
 		this.defFilePickerSetting = new Setting(this.modal.contentEl)
@@ -81,6 +87,17 @@ export class AddDefinitionModal {
 			},
 		});
 
+		// Helper functions for error handling
+		const showError = (message: string) => {
+			errorContainer.textContent = message;
+			errorContainer.style.display = "block";
+			errorContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+		};
+
+		const hideError = () => {
+			errorContainer.style.display = "none";
+		};
+
 		const button = this.modal.contentEl.createEl("button", {
 			text: "Save",
 			cls: 'people-metadata-edit-modal-save-button',
@@ -90,17 +107,22 @@ export class AddDefinitionModal {
 				return;
 			}
 
+			// Hide any previous errors
+			hideError();
+
 			// Validate required fields
 			if (!fullNameText.value.trim()) {
-				new Notice("Please enter a full name");
+				showError("⚠️ Please enter a full name");
 				return;
 			}
 			if (!this.defFilePicker.getValue()) {
-				new Notice("Please choose a company");
+				showError("⚠️ Please choose a company");
 				return;
 			}
 
 			this.submitting = true;
+			button.textContent = "Saving...";
+			button.disabled = true;
 
 			try {
 				const selectedValue = this.defFilePicker.getValue();
@@ -116,7 +138,7 @@ export class AddDefinitionModal {
 				}
 
 				if (!targetFile) {
-					new Notice("Failed to get or create company file");
+					showError("❌ Failed to get or create company file");
 					return;
 				}
 
@@ -133,9 +155,11 @@ export class AddDefinitionModal {
 				this.modal.close();
 			} catch (error) {
 				console.error("Error adding person:", error);
-				new Notice("Failed to add person. Please try again.");
+				showError("❌ Failed to add person. Please try again.");
 			} finally {
 				this.submitting = false;
+				button.textContent = "Save";
+				button.disabled = false;
 			}
 		});
 
