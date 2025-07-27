@@ -41,6 +41,28 @@ This file is for testing the new "Add a Person" modal functionality.
   - Previous errors are cleared when form is resubmitted
   - Error scrolls into view if needed
 
+## Confirmation Dialogs
+
+### Minimal Data Confirmation
+- **Trigger**: When only Full Name is filled (Job Title, Department, and Description are all empty)
+- **Modal Title**: "⚠️ Minimal Person Data"
+- **Message**: Warns about creating a person with minimal information
+- **Suggestion**: Recommends adding at least job title or department
+- **Buttons**:
+  - "Go Back" (muted style) - Returns to form
+  - "Add Anyway" (warning style) - Proceeds with minimal data
+
+### New Company Confirmation
+- **Trigger**: When "Create a new company" is selected from dropdown
+- **Modal Title**: "🏢 Create New Company"
+- **Content**:
+  - Explains what will happen (create file, use defaults, add person)
+  - Lists next steps for customization
+  - Mentions plugin settings → Company pages management
+- **Buttons**:
+  - "Cancel" (muted style) - Returns to form
+  - "Create Company" (CTA style) - Proceeds with company creation
+
 ## Test Person Data
 
 **Full Name**: Alice Johnson

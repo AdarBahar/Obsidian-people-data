@@ -120,12 +120,32 @@ export class AddDefinitionModal {
 				return;
 			}
 
+			// Check for minimal data confirmation
+			const hasMinimalData = !jobTitleText.value.trim() &&
+								   !departmentText.value.trim() &&
+								   !descriptionText.value.trim();
+
+			if (hasMinimalData) {
+				const confirmed = await this.showMinimalDataConfirmation();
+				if (!confirmed) {
+					return;
+				}
+			}
+
+			// Check for new company confirmation
+			const selectedValue = this.defFilePicker.getValue();
+			if (selectedValue === "__CREATE_NEW__") {
+				const confirmed = await this.showNewCompanyConfirmation();
+				if (!confirmed) {
+					return;
+				}
+			}
+
 			this.submitting = true;
 			button.textContent = "Saving...";
 			button.disabled = true;
 
 			try {
-				const selectedValue = this.defFilePicker.getValue();
 				let targetFile;
 
 				if (selectedValue === "__CREATE_NEW__") {
@@ -203,5 +223,118 @@ color: "blue"
 		defManager.addDefFile(file);
 
 		return file;
+	}
+
+	private async showMinimalDataConfirmation(): Promise<boolean> {
+		return new Promise((resolve) => {
+			const confirmModal = new Modal(this.app);
+			confirmModal.setTitle("⚠️ Minimal Person Data");
+
+			const content = confirmModal.contentEl;
+
+			// Warning message
+			content.createEl("p", {
+				text: "You're adding a person with only a name. This will create a very basic entry with minimal information.",
+				attr: { style: "margin-bottom: 16px; color: var(--text-muted);" }
+			});
+
+			// Suggestion
+			content.createEl("p", {
+				text: "Consider adding at least a job title or department to make this person easier to find and identify later.",
+				attr: { style: "margin-bottom: 20px; font-weight: 500;" }
+			});
+
+			// Button container
+			const buttonContainer = content.createDiv({
+				attr: { style: "display: flex; gap: 12px; justify-content: flex-end;" }
+			});
+
+			// Cancel button
+			const cancelButton = buttonContainer.createEl("button", {
+				text: "Go Back",
+				cls: "mod-muted"
+			});
+			cancelButton.addEventListener("click", () => {
+				confirmModal.close();
+				resolve(false);
+			});
+
+			// Confirm button
+			const confirmButton = buttonContainer.createEl("button", {
+				text: "Add Anyway",
+				cls: "mod-warning"
+			});
+			confirmButton.addEventListener("click", () => {
+				confirmModal.close();
+				resolve(true);
+			});
+
+			confirmModal.open();
+		});
+	}
+
+	private async showNewCompanyConfirmation(): Promise<boolean> {
+		return new Promise((resolve) => {
+			const confirmModal = new Modal(this.app);
+			confirmModal.setTitle("🏢 Create New Company");
+
+			const content = confirmModal.contentEl;
+
+			// Main message
+			content.createEl("p", {
+				text: "You're about to create a new company file. This will:",
+				attr: { style: "margin-bottom: 12px; font-weight: 500;" }
+			});
+
+			// List of what will happen
+			const list = content.createEl("ul", {
+				attr: { style: "margin-bottom: 16px; padding-left: 20px;" }
+			});
+
+			list.createEl("li", { text: "Create a new company file in your People folder" });
+			list.createEl("li", { text: "Use default settings (blue color, no logo)" });
+			list.createEl("li", { text: "Add this person to the new company" });
+
+			// Next steps
+			content.createEl("p", {
+				text: "After creation, you can customize the company by:",
+				attr: { style: "margin-bottom: 8px; font-weight: 500;" }
+			});
+
+			const nextStepsList = content.createEl("ul", {
+				attr: { style: "margin-bottom: 20px; padding-left: 20px; color: var(--text-muted);" }
+			});
+
+			nextStepsList.createEl("li", { text: "Going to plugin settings → Company pages management" });
+			nextStepsList.createEl("li", { text: "Setting a custom color and uploading a logo" });
+			nextStepsList.createEl("li", { text: "Adding company description and details" });
+
+			// Button container
+			const buttonContainer = content.createDiv({
+				attr: { style: "display: flex; gap: 12px; justify-content: flex-end;" }
+			});
+
+			// Cancel button
+			const cancelButton = buttonContainer.createEl("button", {
+				text: "Cancel",
+				cls: "mod-muted"
+			});
+			cancelButton.addEventListener("click", () => {
+				confirmModal.close();
+				resolve(false);
+			});
+
+			// Confirm button
+			const confirmButton = buttonContainer.createEl("button", {
+				text: "Create Company",
+				cls: "mod-cta"
+			});
+			confirmButton.addEventListener("click", () => {
+				confirmModal.close();
+				resolve(true);
+			});
+
+			confirmModal.open();
+		});
 	}
 }

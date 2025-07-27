@@ -47,6 +47,27 @@
 	}
 }
 
+/* Confirmation modal styling */
+.modal .mod-warning {
+	background-color: var(--color-orange);
+	color: var(--text-on-accent);
+}
+
+.modal .mod-warning:hover {
+	background-color: var(--color-orange-hover);
+}
+
+.modal .mod-muted {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border-hover);
+}
+
+.modal .mod-muted:hover {
+	background-color: var(--background-modifier-border-hover);
+	color: var(--text-normal);
+}
+
 .people-metadata-definition-popover.is-hidden {
 	visibility: hidden;
 }
