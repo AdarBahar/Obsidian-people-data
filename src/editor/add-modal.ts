@@ -62,15 +62,71 @@ export class AddDefinitionModal {
 			},
 		});
 
+		// Company name validation feedback (initially hidden)
+		const companyNameValidation = this.modal.contentEl.createDiv({
+			cls: "people-metadata-company-validation",
+			attr: { style: "display: none; margin-top: 4px; font-size: 0.9em;" }
+		});
+
+		// Company name validation functions
+		const validateCompanyName = (companyName: string): { isValid: boolean; message: string } => {
+			if (!companyName.trim()) {
+				return { isValid: false, message: "" }; // Empty is handled by main validation
+			}
+
+			const defManager = getDefFileManager();
+			const existingFiles = defManager.getConsolidatedDefFiles();
+			const normalizedName = companyName.trim().toLowerCase();
+
+			// Check if company name already exists (case-insensitive)
+			const exists = existingFiles.some(file =>
+				file.basename.toLowerCase() === normalizedName
+			);
+
+			if (exists) {
+				return {
+					isValid: false,
+					message: `⚠️ Company "${companyName.trim()}" already exists. Please choose a different name.`
+				};
+			}
+
+			return { isValid: true, message: `✅ "${companyName.trim()}" is available.` };
+		};
+
+		const showCompanyValidation = (message: string, isValid: boolean) => {
+			companyNameValidation.textContent = message;
+			companyNameValidation.style.display = message ? "block" : "none";
+			companyNameValidation.style.color = isValid ? "var(--text-success)" : "var(--text-error)";
+		};
+
+		const hideCompanyValidation = () => {
+			companyNameValidation.style.display = "none";
+		};
+
+		// Add blur event listener for real-time validation
+		companyNameText.addEventListener('blur', () => {
+			if (companyNameText.style.display !== "none" && companyNameText.value.trim()) {
+				const validation = validateCompanyName(companyNameText.value);
+				showCompanyValidation(validation.message, validation.isValid);
+			}
+		});
+
+		// Add input event listener to hide validation while typing
+		companyNameText.addEventListener('input', () => {
+			hideCompanyValidation();
+		});
+
 		// Add change listener to show/hide company name field
 		this.defFilePicker.onChange((value) => {
 			if (value === "__CREATE_NEW__") {
 				companyNameHeader.style.display = "block";
 				companyNameText.style.display = "block";
+				companyNameValidation.style.display = "none";
 				companyNameText.focus();
 			} else {
 				companyNameHeader.style.display = "none";
 				companyNameText.style.display = "none";
+				companyNameValidation.style.display = "none";
 				companyNameText.value = "";
 			}
 		});
@@ -155,6 +211,15 @@ export class AddDefinitionModal {
 			if (selectedValue === "__CREATE_NEW__" && !companyNameText.value.trim()) {
 				showError("⚠️ Please enter a company name");
 				return;
+			}
+
+			// Check for company name conflicts when creating new company
+			if (selectedValue === "__CREATE_NEW__") {
+				const validation = validateCompanyName(companyNameText.value);
+				if (!validation.isValid) {
+					showError(validation.message);
+					return;
+				}
 			}
 
 			// Check for minimal data confirmation

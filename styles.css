@@ -68,6 +68,30 @@
 	color: var(--text-normal);
 }
 
+/* Company name validation feedback */
+.people-metadata-company-validation {
+	font-size: var(--font-ui-smaller);
+	font-weight: 500;
+	padding: var(--size-2-1) var(--size-2-2);
+	border-radius: var(--radius-s);
+	margin-top: var(--size-2-1);
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 .people-metadata-definition-popover.is-hidden {
 	visibility: hidden;
 }

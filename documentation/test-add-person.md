@@ -77,6 +77,19 @@ This file is for testing the new "Add a Person" modal functionality.
   - Automatically focuses when shown
   - Value is cleared when hidden
 - **Validation**: Required when creating new company
+- **Real-time Validation**:
+  - Validates on blur (when focus moves away from field)
+  - Checks for existing company names (case-insensitive)
+  - Shows immediate feedback below the field
+  - Hides validation message while typing
+
+### Company Name Validation Messages
+- **Available Name**: "✅ '[Company Name]' is available." (green text)
+- **Duplicate Name**: "⚠️ Company '[Company Name]' already exists. Please choose a different name." (red text)
+- **Validation Timing**:
+  - Appears when user tabs out or clicks away from company name field
+  - Disappears when user starts typing again
+  - Blocks form submission if company name already exists
 
 ## Test Person Data
 
