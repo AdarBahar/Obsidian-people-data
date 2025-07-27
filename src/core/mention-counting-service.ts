@@ -2,6 +2,7 @@ import { TFile, Vault, MetadataCache } from "obsidian";
 import { PersonMetadata } from "./model";
 import { getSmartLineScanner } from "./smart-line-scanner";
 import { getOptimizedSearchEngine } from "./optimized-search-engine";
+import { debugLog, debugInfo, debugError } from "../util/debug";
 
 export interface MentionCount {
 	personId: string;
@@ -116,7 +117,7 @@ export class MentionCountingService {
 		this.stats.lastFullScan = Date.now();
 		this.stats.averageScanTime = scanTime / markdownFiles.length;
 
-		console.log(`Full mention scan completed in ${scanTime}ms. Found ${this.stats.totalMentionsFound} mentions across ${this.stats.filesWithMentions} files.`);
+		debugInfo(`Full mention scan completed in ${scanTime}ms. Found ${this.stats.totalMentionsFound} mentions across ${this.stats.filesWithMentions} files.`);
 	}
 
 	/**
@@ -129,7 +130,7 @@ export class MentionCountingService {
 			let fileMentionsFound = false;
 			let fileMentionCount = 0;
 
-			console.log(`Scanning file: ${file.path} (${lines.length} lines)`);
+			debugLog(`Scanning file: ${file.path} (${lines.length} lines)`);
 
 			for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
 				const line = lines[lineIndex];
@@ -138,7 +139,7 @@ export class MentionCountingService {
 				const mentions = this.findMentionsInLine(line, people, lineIndex);
 
 				if (mentions.length > 0) {
-					console.log(`Line ${lineIndex + 1}: "${line.substring(0, 100)}..." -> Found ${mentions.length} mentions`);
+					debugLog(`Line ${lineIndex + 1}: "${line.substring(0, 100)}..." -> Found ${mentions.length} mentions`);
 				}
 
 				for (const mention of mentions) {
@@ -151,7 +152,7 @@ export class MentionCountingService {
 
 			if (fileMentionsFound) {
 				this.stats.filesWithMentions++;
-				console.log(`File ${file.path}: Found ${fileMentionCount} total mentions`);
+				debugLog(`File ${file.path}: Found ${fileMentionCount} total mentions`);
 			}
 		} catch (error) {
 			console.error(`Error scanning file ${file.path}:`, error);
@@ -203,7 +204,7 @@ export class MentionCountingService {
 				const contextStart = Math.max(0, foundIndex - 10);
 				const contextEnd = Math.min(line.length, foundIndex + person.fullName.length + 10);
 				const context = line.substring(contextStart, contextEnd);
-				console.log(`  Found "${person.fullName}" in: "...${context}..." (${mentionType})`);
+				debugLog(`  Found "${person.fullName}" in: "...${context}..." (${mentionType})`);
 			}
 
 			// Look for next occurrence

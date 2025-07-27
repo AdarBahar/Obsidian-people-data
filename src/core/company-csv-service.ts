@@ -2,6 +2,7 @@ import { App, TFile, Notice } from "obsidian";
 import { getDefFileManager } from "./def-file-manager";
 import { DefFileUpdater } from "./def-file-updater";
 import { PersonMetadata } from "./model";
+import { debugWarn } from "../util/debug";
 
 export interface CompanyCSVRow {
     fullName: string;
@@ -122,7 +123,7 @@ export class CompanyCSVService {
                     rows.push(row);
                 }
             } catch (error) {
-                console.warn(`Error parsing CSV line ${i + 1}: ${error.message}`);
+                debugWarn(`Error parsing CSV line ${i + 1}: ${error.message}`);
             }
         }
 
@@ -192,7 +193,7 @@ export class CompanyCSVService {
         const fullName = values[headerMap.fullName]?.trim();
 
         if (!fullName) {
-            console.warn(`Line ${lineNumber}: Missing required field Full Name: "${fullName}"`);
+            debugWarn(`Line ${lineNumber}: Missing required field Full Name: "${fullName}"`);
             return null;
         }
 
@@ -242,7 +243,7 @@ export class CompanyCSVService {
             const parser = new (await import('./file-parser')).FileParser(this.app, file);
             return await parser.parseFile(fileContent);
         } catch (error) {
-            console.warn(`Error reading existing people from ${file.path}:`, error);
+            debugWarn(`Error reading existing people from ${file.path}:`, error);
             return [];
         }
     }

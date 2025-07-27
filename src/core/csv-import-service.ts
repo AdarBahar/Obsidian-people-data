@@ -4,6 +4,7 @@ import { DefFileUpdater } from "./def-file-updater";
 import { DefFileType } from "./file-type";
 import { PersonMetadata } from "./model";
 import { getCompanyManager } from "./company-manager";
+import { debugWarn } from "../util/debug";
 
 export interface CSVRow {
     company: string;
@@ -101,7 +102,7 @@ export class CSVImportService {
                     rows.push(row);
                 }
             } catch (error) {
-                console.warn(`Error parsing CSV line ${i + 1}: ${error.message}`);
+                debugWarn(`Error parsing CSV line ${i + 1}: ${error.message}`);
             }
         }
 
@@ -175,7 +176,7 @@ export class CSVImportService {
         const fullName = values[headerMap.fullName]?.trim();
 
         if (!company || !fullName) {
-            console.warn(`Line ${lineNumber}: Missing required fields (Company: "${company}", Full Name: "${fullName}")`);
+            debugWarn(`Line ${lineNumber}: Missing required fields (Company: "${company}", Full Name: "${fullName}")`);
             return null;
         }
 
@@ -345,7 +346,7 @@ color: "blue"
             const parser = new (await import('./file-parser')).FileParser(this.app, file);
             return await parser.parseFile(fileContent);
         } catch (error) {
-            console.warn(`Error reading existing people from ${file.path}:`, error);
+            debugWarn(`Error reading existing people from ${file.path}:`, error);
             return [];
         }
     }

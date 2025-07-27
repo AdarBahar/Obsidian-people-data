@@ -24,6 +24,7 @@ import { CSVImportModal } from './editor/csv-import-modal';
 import { initOptimizedSearchEngine, getOptimizedSearchEngine } from './core/optimized-search-engine';
 import { initSmartLineScanner, getSmartLineScanner } from './core/smart-line-scanner';
 import { initMentionCountingService, getMentionCountingService } from './core/mention-counting-service';
+import { debugLog, debugInfo, debugError } from './util/debug';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
@@ -722,7 +723,7 @@ Notes about the second person.
 			}
 		}
 
-		console.log(`People Metadata: Updating company colors for ${companies.size} companies (${companiesWithColors}/${totalPeople} people have company colors)`);
+		debugInfo(`Updating company colors for ${companies.size} companies (${companiesWithColors}/${totalPeople} people have company colors)`);
 
 		// Generate CSS rules for each company
 		let cssRules = '';
@@ -736,7 +737,7 @@ Notes about the second person.
 		}
 
 		this.dynamicStylesEl.textContent = cssRules;
-		console.log(`People Metadata: Applied ${companies.size} company color rules`);
+		debugInfo(`Applied ${companies.size} company color rules`);
 	}
 
 	private showPerformanceStatistics() {
