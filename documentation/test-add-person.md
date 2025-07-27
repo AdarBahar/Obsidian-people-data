@@ -13,13 +13,15 @@ This file is for testing the new "Add a Person" modal functionality.
 
 - Modal title should be "Add a Person"
 - Fields should be (in order):
-  - **Choose Company** (dropdown - at the top)
+  - **Choose Company** (dropdown - at the top, default: "Choose one")
+  - **Company Name** (appears only when "Create a new company" is selected)
   - Full Name (placeholder: "John Smith")
   - Job Title (placeholder: "Dev Team Leader")
   - Department (placeholder: "Engineering")
   - Description (optional) (placeholder: "Add description here (optional)")
 - Company dropdown should show:
-  - "Create a new Company" as first option
+  - "Choose one" as default option (empty value)
+  - "Create a new company" as second option
   - List of existing companies by name (not file path)
 - No "Definition file type" field should be visible
 - Description field is optional and not required for form submission
@@ -29,7 +31,8 @@ This file is for testing the new "Add a Person" modal functionality.
 - **Inline Error Display**: Validation errors appear in a red error banner at the top of the modal
 - **Error Messages**:
   - Empty full name: "⚠️ Please enter a full name"
-  - No company selected: "⚠️ Please choose a company"
+  - No company selected: "⚠️ You need to choose a company"
+  - Empty company name (when creating new): "⚠️ Please enter a company name"
   - Save failures: "❌ Failed to add person. Please try again."
   - Company creation failures: "❌ Failed to get or create company file"
 - **Button States**:
@@ -53,15 +56,27 @@ This file is for testing the new "Add a Person" modal functionality.
   - "Add Anyway" (warning style) - Proceeds with minimal data
 
 ### New Company Confirmation
-- **Trigger**: When "Create a new company" is selected from dropdown
+- **Trigger**: When "Create a new company" is selected and company name is provided
 - **Modal Title**: "🏢 Create New Company"
 - **Content**:
+  - Shows the company name that will be created
   - Explains what will happen (create file, use defaults, add person)
   - Lists next steps for customization
   - Mentions plugin settings → Company pages management
 - **Buttons**:
   - "Cancel" (muted style) - Returns to form
   - "Create Company" (CTA style) - Proceeds with company creation
+
+## Dynamic Field Behavior
+
+### Company Name Field
+- **Visibility**: Hidden by default, appears only when "Create a new company" is selected
+- **Behavior**:
+  - Shows when dropdown changes to "Create a new company"
+  - Hides when any other option is selected
+  - Automatically focuses when shown
+  - Value is cleared when hidden
+- **Validation**: Required when creating new company
 
 ## Test Person Data
 

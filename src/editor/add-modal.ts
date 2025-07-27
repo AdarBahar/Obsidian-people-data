@@ -33,7 +33,10 @@ export class AddDefinitionModal {
 		this.defFilePickerSetting = new Setting(this.modal.contentEl)
 			.setName("Choose company")
 			.addDropdown(component => {
-				// Add "Create a new Company" option first
+				// Add default "Choose one" option
+				component.addOption("", "Choose one");
+
+				// Add "Create a new Company" option
 				component.addOption("__CREATE_NEW__", "Create a new company");
 
 				// Add existing companies
@@ -44,6 +47,34 @@ export class AddDefinitionModal {
 				});
 				this.defFilePicker = component;
 			});
+
+		// Company name field (initially hidden)
+		this.modal.contentEl.createDiv({
+			cls: "people-metadata-edit-modal-section-header",
+			text: "Company name",
+			attr: { style: "display: none;" }
+		});
+		const companyNameText = this.modal.contentEl.createEl("textarea", {
+			cls: 'people-metadata-edit-modal-aliases',
+			attr: {
+				placeholder: "Enter company name",
+				style: "display: none;"
+			},
+		});
+
+		// Add change listener to show/hide company name field
+		this.defFilePicker.onChange((value) => {
+			const companyNameHeader = this.modal.contentEl.querySelector('.people-metadata-edit-modal-section-header:nth-of-type(2)') as HTMLElement;
+			if (value === "__CREATE_NEW__") {
+				companyNameHeader.style.display = "block";
+				companyNameText.style.display = "block";
+				companyNameText.focus();
+			} else {
+				companyNameHeader.style.display = "none";
+				companyNameText.style.display = "none";
+				companyNameText.value = "";
+			}
+		});
 
 		this.modal.contentEl.createDiv({
 			cls: "people-metadata-edit-modal-section-header",
@@ -115,8 +146,15 @@ export class AddDefinitionModal {
 				showError("⚠️ Please enter a full name");
 				return;
 			}
-			if (!this.defFilePicker.getValue()) {
-				showError("⚠️ Please choose a company");
+
+			const selectedValue = this.defFilePicker.getValue();
+			if (!selectedValue) {
+				showError("⚠️ You need to choose a company");
+				return;
+			}
+
+			if (selectedValue === "__CREATE_NEW__" && !companyNameText.value.trim()) {
+				showError("⚠️ Please enter a company name");
 				return;
 			}
 
@@ -133,9 +171,8 @@ export class AddDefinitionModal {
 			}
 
 			// Check for new company confirmation
-			const selectedValue = this.defFilePicker.getValue();
 			if (selectedValue === "__CREATE_NEW__") {
-				const confirmed = await this.showNewCompanyConfirmation();
+				const confirmed = await this.showNewCompanyConfirmation(companyNameText.value.trim());
 				if (!confirmed) {
 					return;
 				}
@@ -150,7 +187,7 @@ export class AddDefinitionModal {
 
 				if (selectedValue === "__CREATE_NEW__") {
 					// Create a new company file
-					targetFile = await this.createNewCompanyFile(fullNameText.value.trim());
+					targetFile = await this.createNewCompanyFile(companyNameText.value.trim());
 				} else {
 					// Use existing company file
 					const defFileManager = getDefFileManager();
@@ -186,11 +223,8 @@ export class AddDefinitionModal {
 		this.modal.open();
 	}
 
-	private async createNewCompanyFile(personName: string): Promise<TFile> {
-		// Extract potential company name from person name or use a generic name
-		const words = personName.split(' ');
-		const lastName = words[words.length - 1];
-		const companyName = `${lastName}-Company`;
+	private async createNewCompanyFile(companyName: string): Promise<TFile> {
+		// Use the provided company name directly
 
 		const defManager = getDefFileManager();
 		const defFolder = defManager.getGlobalDefFolder();
@@ -273,12 +307,18 @@ color: "blue"
 		});
 	}
 
-	private async showNewCompanyConfirmation(): Promise<boolean> {
+	private async showNewCompanyConfirmation(companyName: string): Promise<boolean> {
 		return new Promise((resolve) => {
 			const confirmModal = new Modal(this.app);
 			confirmModal.setTitle("🏢 Create New Company");
 
 			const content = confirmModal.contentEl;
+
+			// Company name display
+			content.createEl("p", {
+				text: `Company: "${companyName}"`,
+				attr: { style: "margin-bottom: 16px; font-weight: 600; font-size: 1.1em; color: var(--text-accent);" }
+			});
 
 			// Main message
 			content.createEl("p", {
