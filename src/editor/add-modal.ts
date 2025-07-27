@@ -49,7 +49,7 @@ export class AddDefinitionModal {
 			});
 
 		// Company name field (initially hidden)
-		this.modal.contentEl.createDiv({
+		const companyNameHeader = this.modal.contentEl.createDiv({
 			cls: "people-metadata-edit-modal-section-header",
 			text: "Company name",
 			attr: { style: "display: none;" }
@@ -64,7 +64,6 @@ export class AddDefinitionModal {
 
 		// Add change listener to show/hide company name field
 		this.defFilePicker.onChange((value) => {
-			const companyNameHeader = this.modal.contentEl.querySelector('.people-metadata-edit-modal-section-header:nth-of-type(2)') as HTMLElement;
 			if (value === "__CREATE_NEW__") {
 				companyNameHeader.style.display = "block";
 				companyNameText.style.display = "block";
