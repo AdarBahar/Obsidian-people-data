@@ -257,16 +257,38 @@ export default class NoteDefinition extends Plugin {
 			}
 		});
 
+		// Debug mode commands - register both and let user choose the appropriate one
 		this.addCommand({
-			id: "toggle-debug-mode",
-			name: "Toggle debug mode",
-			callback: async () => {
-				const currentDebugMode = this.context.settings.debugMode ?? false;
-				this.context.settings.debugMode = !currentDebugMode;
-				await this.saveSettings();
+			id: "enable-debug-mode",
+			name: "Enable debug mode (currently Off)",
+			checkCallback: (checking: boolean) => {
+				const currentDebugMode = this.context?.settings?.debugMode ?? false;
+				if (!currentDebugMode) {
+					if (!checking) {
+						this.context.settings.debugMode = true;
+						this.saveSettings();
+						new Notice("People Metadata debug mode enabled");
+					}
+					return true;
+				}
+				return false;
+			}
+		});
 
-				const status = this.context.settings.debugMode ? "enabled" : "disabled";
-				new Notice(`People Metadata debug mode ${status}`);
+		this.addCommand({
+			id: "disable-debug-mode",
+			name: "Disable debug mode (currently On)",
+			checkCallback: (checking: boolean) => {
+				const currentDebugMode = this.context?.settings?.debugMode ?? false;
+				if (currentDebugMode) {
+					if (!checking) {
+						this.context.settings.debugMode = false;
+						this.saveSettings();
+						new Notice("People Metadata debug mode disabled");
+					}
+					return true;
+				}
+				return false;
 			}
 		});
 

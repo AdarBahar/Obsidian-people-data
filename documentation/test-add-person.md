@@ -95,8 +95,10 @@ This file is for testing the new "Add a Person" modal functionality.
 
 ### Enabling Debug Mode
 - **Settings**: Go to Settings → People Metadata → Core Setup → Debug mode (toggle on)
-- **Command**: Use Command Palette → "People Metadata: Toggle debug mode"
-- **Confirmation**: Notice will show "People Metadata debug mode enabled/disabled"
+- **Commands**: Use Command Palette with context-aware commands:
+  - "People Metadata: Enable debug mode (currently Off)" - Only appears when debug mode is off
+  - "People Metadata: Disable debug mode (currently On)" - Only appears when debug mode is on
+- **Confirmation**: Notice will show "People Metadata debug mode enabled" or "disabled"
 
 ### Debug Console Output
 When debug mode is enabled, the browser console will show detailed logging:
