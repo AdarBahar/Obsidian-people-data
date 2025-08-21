@@ -1,9 +1,5 @@
 const RETRY_INTERVAL = 1000;
 
-function sleep(ms: number): Promise<void> {
-	return new Promise(resolve => window.setTimeout(resolve, ms));
-}
-
 export function useRetry(retryCount?: number) {
 	let shouldRetry = false;
 	let maxRetries = retryCount ?? 3;
@@ -17,7 +13,8 @@ export function useRetry(retryCount?: number) {
 			}
 			shouldRetry = false;
 			currRetry++;
-			await sleep(RETRY_INTERVAL);
+			// Use standard Promise-based delay instead of custom sleep function
+			await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL));
 		}
 		throw new Error("Failed to exec function, hit max retries");
 	}

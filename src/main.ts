@@ -337,7 +337,47 @@ Notes about the second person.
 ---
 `;
 
-		await this.app.vault.process(file, () => template);
+		// Use FileManager.processFrontMatter for atomic frontmatter updates
+		// First, add the frontmatter atomically
+		await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+			frontmatter["def-type"] = "consolidated";
+			frontmatter["color"] = "blue";
+		});
+
+		// Then add the content body
+		const bodyContent = `
+![${companyName} Logo](logo.png)
+
+# Person Name
+Position: Job Title
+Department: Department Name
+
+Notes about this person go here.
+You can add multiple lines of notes.
+
+---
+
+# Another Person
+Position: Another Job Title
+Department: Another Department
+
+Notes about the second person.
+
+---
+`;
+
+		await this.app.vault.process(file, (data) => {
+			// Get existing frontmatter and append body content
+			const fileMetadata = this.app.metadataCache.getFileCache(file);
+			const fmPos = fileMetadata?.frontmatterPosition;
+			if (fmPos) {
+				// File has frontmatter, append body after it
+				return data + bodyContent;
+			} else {
+				// No frontmatter (shouldn't happen after processFrontMatter), but handle gracefully
+				return template;
+			}
+		});
 	}
 
 	updateEditorExts() {

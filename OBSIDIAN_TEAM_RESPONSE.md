@@ -116,15 +116,34 @@ Thank you for the comprehensive feedback on the People Metadata plugin. We have 
 ## 📁 Repository Status
 
 **GitHub Repository**: https://github.com/AdarBahar/Obsidian-people-data
-**Latest Commit**: `112a7e3` - "feat: Address Obsidian team feedback - Major code quality improvements"
+**Latest Commit**: `b29e8c7` - "docs: Add comprehensive response to Obsidian team feedback"
 **Branch**: `main`
 **Status**: Ready for review
 
+## 🔄 Additional Improvements (Latest Update)
+
+### 9. **FileManager.processFrontMatter Usage** ✅ FIXED
+**Issue**: Not using `FileManager.processFrontMatter` for atomic frontmatter updates
+**Solution**:
+- Replaced manual frontmatter manipulation with `FileManager.processFrontMatter` API
+- Ensures atomic read-modify-write operations for frontmatter
+- Improved reliability and consistency with Obsidian's metadata system
+- **Files Changed**: `src/main.ts`
+
+### 10. **Custom Sleep Function Removal** ✅ FIXED
+**Issue**: Using custom `sleep` functions instead of standard JavaScript approaches
+**Solution**:
+- Removed custom `sleep` function implementations
+- Replaced with standard `Promise` and `setTimeout` patterns
+- Simplified code and removed unnecessary utility functions
+- **Files Changed**: `src/util/retry.ts`, `src/ui/file-explorer.ts`
+
 ### Key Files Updated
-- `src/main.ts` - Plugin entry point with new architecture
+- `src/main.ts` - Plugin entry point with new architecture and FileManager.processFrontMatter usage
 - `src/core/plugin-context.ts` - NEW: Dependency injection system
 - `src/core/definition-preview-service.ts` - NEW: Preview service
-- `src/ui/file-explorer.ts` - Fixed HTML ID duplication
+- `src/ui/file-explorer.ts` - Fixed HTML ID duplication and removed custom sleep function
+- `src/util/retry.ts` - Removed custom sleep function, using standard Promise patterns
 - `src/types/obsidian.d.ts` - Removed conflicting types
 - Multiple other files with async/await and API improvements
 

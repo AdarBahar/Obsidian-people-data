@@ -10,10 +10,6 @@ const RETRY_INTERVAL = 1000;
 const TAG_CLASS = "people-metadata-file-tag";
 const TAG_DATA_ATTR = "data-people-metadata-tag";
 
-function sleep(ms: number): Promise<void> {
-	return new Promise(resolve => window.setTimeout(resolve, ms));
-}
-
 export class FileExplorerDecoration {
 	app: App;
 	retryCount: number;
@@ -40,7 +36,8 @@ export class FileExplorerDecoration {
 			}
 
 			this.retryCount++;
-			await sleep(RETRY_INTERVAL);
+			// Use standard Promise-based delay instead of custom sleep function
+			await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL));
 		}
 
 		logError("Failed to access file explorer view after maximum retries");
