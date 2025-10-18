@@ -1,3 +1,6 @@
+// Declare sleep as a global function available in Obsidian environment
+declare function sleep(ms: number): Promise<void>;
+
 const RETRY_INTERVAL = 1000;
 
 export function useRetry(retryCount?: number) {
@@ -13,8 +16,8 @@ export function useRetry(retryCount?: number) {
 			}
 			shouldRetry = false;
 			currRetry++;
-			// Use standard Promise-based delay instead of custom sleep function
-			await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL));
+			// Use Obsidian's built-in sleep function
+			await sleep(RETRY_INTERVAL);
 		}
 		throw new Error("Failed to exec function, hit max retries");
 	}

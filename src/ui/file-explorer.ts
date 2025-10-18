@@ -3,6 +3,9 @@ import { DEFAULT_DEF_FOLDER, getSettings } from "src/settings";
 import { FileExplorerView } from "src/types/obsidian";
 import { logError } from "src/util/log";
 
+// Declare sleep as a global function available in Obsidian environment
+declare function sleep(ms: number): Promise<void>;
+
 let fileExplorerDecoration: FileExplorerDecoration;
 
 const MAX_RETRY = 3;
@@ -36,8 +39,8 @@ export class FileExplorerDecoration {
 			}
 
 			this.retryCount++;
-			// Use standard Promise-based delay instead of custom sleep function
-			await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL));
+			// Use Obsidian's built-in sleep function
+			await sleep(RETRY_INTERVAL);
 		}
 
 		logError("Failed to access file explorer view after maximum retries");
