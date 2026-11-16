@@ -2,7 +2,8 @@ import { App, DropdownComponent, Modal, Notice, Setting, TFile } from "obsidian"
 import { getDefFileManager } from "src/core/def-file-manager";
 import { DefFileUpdater } from "src/core/def-file-updater";
 import { DefFileType } from "src/core/file-type";
-import { ensureFolder } from "src/util/folders";
+import { childPath, ensureFolder } from "src/util/folders";
+import { getFileExplorerDecoration } from "src/ui/file-explorer";
 
 
 export class AddDefinitionModal {
@@ -153,18 +154,19 @@ export class AddDefinitionModal {
 		const companyName = `${lastName}-Company`;
 
 		const defManager = getDefFileManager();
-		const defFolder = defManager.getGlobalDefFolder();
+		const settingFolder = defManager.getGlobalDefFolder();
 		// The people folder can be missing in a new vault
-		if (!await ensureFolder(this.app, defFolder)) {
-			throw new Error(`Cannot make the people folder '${defFolder}'`);
+		const defFolder = await ensureFolder(this.app, settingFolder);
+		if (defFolder === null) {
+			throw new Error(`Cannot make the people folder '${settingFolder}'`);
 		}
-		const filePath = `${defFolder}/${companyName}.md`;
+		const filePath = childPath(defFolder, `${companyName}.md`);
 
 		// Check if file already exists, if so, add a number suffix
 		let finalPath = filePath;
 		let counter = 1;
 		while (this.app.vault.getAbstractFileByPath(finalPath)) {
-			finalPath = `${defFolder}/${companyName}-${counter}.md`;
+			finalPath = childPath(defFolder, `${companyName}-${counter}.md`);
 			counter++;
 		}
 
@@ -183,6 +185,9 @@ color: "blue"
 
 		// Add to def manager
 		defManager.addDefFile(file);
+		// The create listener does not mark a file that already has def-type,
+		// and the folder can be new
+		getFileExplorerDecoration(this.app).run();
 
 		return file;
 	}

@@ -1,5 +1,5 @@
 import { debounce, Menu, Notice, Platform, Plugin, TAbstractFile, TFolder, TFile, MarkdownView, getFrontMatterInfo, normalizePath, parseYaml } from 'obsidian';
-import { ensureFolder } from './util/folders';
+import { ensureFolder, findFolder } from './util/folders';
 import { definitionMarker, refreshDecorationsEffect } from './editor/decoration';
 import { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -287,39 +287,70 @@ export default class NoteDefinition extends Plugin {
 		});
 	}
 
-	// The defManager change listener redraws the names after each load
 	// If the people folder does not exist, show a notice with a button that makes it.
 	// The plugin does not make the folder by itself, so a vault does not get a folder that it does not use.
+	// If a folder exists with a different letter case, the notice offers to use that folder.
 	private offerToCreatePeopleFolder() {
 		const folder = normalizePath(this.defManager.getGlobalDefFolder());
-		if (!folder || folder === "/" || this.app.vault.getAbstractFileByPath(folder)) {
+		if (folder === "/" || this.app.vault.getFolderByPath(folder)) {
 			return;
 		}
+		const caseMatch = findFolder(this.app, folder);
+		const text = caseMatch ?
+			`People Metadata: the people folder setting is "${folder}", but the folder is "${caseMatch.path}".` :
+			`People Metadata: the people folder "${folder}" does not exist.`;
 
 		let button: HTMLButtonElement | undefined;
 		const message = createFragment(frag => {
-			frag.createDiv({ text: `People Metadata: the people folder "${folder}" does not exist.` });
-			button = frag.createEl("button", { text: "Create folder" });
+			frag.createDiv({ text });
+			button = frag.createEl("button", { text: caseMatch ? `Use "${caseMatch.path}"` : "Create folder" });
 		});
 		// Duration 0: the notice stays until a click on it
-		new Notice(message, 0);
+		const notice = new Notice(message, 0);
+		this.register(() => notice.hide());
 
-		button?.addEventListener("click", async () => {
-			try {
-				if (!await ensureFolder(this.app, folder)) {
-					new Notice(`Cannot create the folder "${folder}". A file has the same name.`);
-					return;
-				}
-				new Notice(`Created the people folder "${folder}"`);
-				this.fileExplorerDeco.run();
-				await this.refreshDefinitions();
-			} catch (error) {
-				console.error(`Failed to create ${folder}:`, error);
-				new Notice(`Cannot create the folder "${folder}"`);
+		button?.addEventListener("click", () => {
+			if (caseMatch) {
+				this.useAsPeopleFolder(caseMatch.path);
+			} else {
+				this.createPeopleFolder();
 			}
 		});
 	}
 
+	private async useAsPeopleFolder(path: string) {
+		this.context.settings.defFolder = path;
+		await this.saveSettings();
+		new Notice(`The people folder is now "${path}"`);
+	}
+
+	// Reads the setting at the time of the click, because the setting can change after startup
+	private async createPeopleFolder() {
+		const folder = normalizePath(this.defManager.getGlobalDefFolder());
+		try {
+			const existed = !!this.app.vault.getFolderByPath(folder);
+			const realPath = await ensureFolder(this.app, folder);
+			if (realPath === null) {
+				new Notice(`Cannot create the folder "${folder}". A file has the same name.`);
+				return;
+			}
+			if (realPath !== folder) {
+				// A folder with a different letter case exists
+				await this.useAsPeopleFolder(realPath);
+				return;
+			}
+			new Notice(existed ?
+				`The people folder "${folder}" already exists` :
+				`Created the people folder "${folder}"`);
+			this.fileExplorerDeco.run();
+			await this.refreshDefinitions();
+		} catch (error) {
+			console.error(`Failed to create ${folder}:`, error);
+			new Notice(`Cannot create the folder "${folder}"`);
+		}
+	}
+
+	// The defManager change listener redraws the names after each load
 	async refreshDefinitions() {
 		await this.defManager.loadDefinitions();
 	}
