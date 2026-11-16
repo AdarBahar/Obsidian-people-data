@@ -1,4 +1,5 @@
-import { debounce, Menu, Notice, Platform, Plugin, TAbstractFile, TFolder, TFile, MarkdownView, getFrontMatterInfo, parseYaml } from 'obsidian';
+import { debounce, Menu, Notice, Platform, Plugin, TAbstractFile, TFolder, TFile, MarkdownView, getFrontMatterInfo, normalizePath, parseYaml } from 'obsidian';
+import { ensureFolder } from './util/folders';
 import { definitionMarker, refreshDecorationsEffect } from './editor/decoration';
 import { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -210,6 +211,7 @@ export default class NoteDefinition extends Plugin {
 				}
 			}));
 			this.registerFileEvents();
+			this.offerToCreatePeopleFolder();
 		});
 
 		this.registerEvent(this.app.metadataCache.on('changed', (file: TFile) => {
@@ -286,6 +288,38 @@ export default class NoteDefinition extends Plugin {
 	}
 
 	// The defManager change listener redraws the names after each load
+	// If the people folder does not exist, show a notice with a button that makes it.
+	// The plugin does not make the folder by itself, so a vault does not get a folder that it does not use.
+	private offerToCreatePeopleFolder() {
+		const folder = normalizePath(this.defManager.getGlobalDefFolder());
+		if (!folder || folder === "/" || this.app.vault.getAbstractFileByPath(folder)) {
+			return;
+		}
+
+		let button: HTMLButtonElement | undefined;
+		const message = createFragment(frag => {
+			frag.createDiv({ text: `People Metadata: the people folder "${folder}" does not exist.` });
+			button = frag.createEl("button", { text: "Create folder" });
+		});
+		// Duration 0: the notice stays until a click on it
+		new Notice(message, 0);
+
+		button?.addEventListener("click", async () => {
+			try {
+				if (!await ensureFolder(this.app, folder)) {
+					new Notice(`Cannot create the folder "${folder}". A file has the same name.`);
+					return;
+				}
+				new Notice(`Created the people folder "${folder}"`);
+				this.fileExplorerDeco.run();
+				await this.refreshDefinitions();
+			} catch (error) {
+				console.error(`Failed to create ${folder}:`, error);
+				new Notice(`Cannot create the folder "${folder}"`);
+			}
+		});
+	}
+
 	async refreshDefinitions() {
 		await this.defManager.loadDefinitions();
 	}

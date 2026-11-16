@@ -2,6 +2,7 @@ import { App, DropdownComponent, Modal, Notice, Setting, TFile } from "obsidian"
 import { getDefFileManager } from "src/core/def-file-manager";
 import { DefFileUpdater } from "src/core/def-file-updater";
 import { DefFileType } from "src/core/file-type";
+import { ensureFolder } from "src/util/folders";
 
 
 export class AddDefinitionModal {
@@ -153,6 +154,10 @@ export class AddDefinitionModal {
 
 		const defManager = getDefFileManager();
 		const defFolder = defManager.getGlobalDefFolder();
+		// The people folder can be missing in a new vault
+		if (!await ensureFolder(this.app, defFolder)) {
+			throw new Error(`Cannot make the people folder '${defFolder}'`);
+		}
 		const filePath = `${defFolder}/${companyName}.md`;
 
 		// Check if file already exists, if so, add a number suffix

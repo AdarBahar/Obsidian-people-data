@@ -1,5 +1,6 @@
 import { App, Notice, TFile } from "obsidian";
 import { getSettings } from "src/settings";
+import { ensureFolder } from "src/util/folders";
 import { logError } from "src/util/log";
 import { normaliseWord } from "src/util/text";
 import { ConsolidatedDefParser } from "./consolidated-def-parser";
@@ -97,6 +98,10 @@ export class DefFileUpdater {
 	private async addAtomicFileMetadata(metadata: Partial<PersonMetadata>, folder?: string): Promise<boolean> {
 		if (!folder) {
 			logError("Folder missing for atomic file add");
+			return false;
+		}
+		if (!await ensureFolder(this.app, folder)) {
+			logError(`Cannot make the folder '${folder}'`);
 			return false;
 		}
 		const fmBuilder = new FrontmatterBuilder();
