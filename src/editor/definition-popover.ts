@@ -159,7 +159,9 @@ export class DefinitionPopover {
 			!!target && (el.contains(target as Node) || !!anchorEl?.contains(target as Node));
 
 		listen("keydown", evt => {
-			if (isDismissKey(evt)) {
+			// Keys inside the popover (for example Tab between links) keep it open. Escape always closes it.
+			const inPopover = !!evt.target && el.contains(evt.target as Node);
+			if (evt.key === "Escape" || (!inPopover && isDismissKey(evt))) {
 				this.close();
 			}
 		});
