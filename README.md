@@ -33,7 +33,10 @@ A personal tool for managing and looking up people metadata within your notes. C
 
 ## 📖 Basic Usage
 
-1. Create a folder, right-click on the folder in your file explorer, and select `Set as people folder`. This registers the folder as your people metadata folder.
+1. Choose the people folder. The default folder is `people`.
+   - If the folder does not exist when Obsidian starts, a notice shows a `Create folder` button.
+   - The `Add a Person` command also makes the folder if it is missing.
+   - To use a different folder, right-click on the folder in your file explorer, and select `Set as people folder`.
 2. Within the folder, create metadata files (with any name of your choice).
 3. Add a person metadata entry using the `Add a Person` command. This will display a user-friendly modal where you can input the person's details and choose which company they belong to.
 4. Once a person metadata entry is added, the person's name should be underlined in your notes. You may preview the metadata by hovering over the underlined name with the mouse, or triggering the `Preview person under cursor` command when your cursor is on the name.

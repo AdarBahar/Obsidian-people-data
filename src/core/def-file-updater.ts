@@ -1,5 +1,6 @@
 import { App, Notice, TFile } from "obsidian";
 import { getSettings } from "src/settings";
+import { childPath, ensureFolder } from "src/util/folders";
 import { logError } from "src/util/log";
 import { normaliseWord } from "src/util/text";
 import { ConsolidatedDefParser } from "./consolidated-def-parser";
@@ -99,11 +100,16 @@ export class DefFileUpdater {
 			logError("Folder missing for atomic file add");
 			return false;
 		}
+		const realFolder = await ensureFolder(this.app, folder);
+		if (realFolder === null) {
+			logError(`Cannot make the folder '${folder}'`);
+			return false;
+		}
 		const fmBuilder = new FrontmatterBuilder();
 		fmBuilder.add(DEF_TYPE_FM, DefFileType.Atomic);
 		const fm = fmBuilder.finish();
 		const body = this.constructLinesFromMetadata(metadata, false).join("\n");
-		const file = await this.app.vault.create(`${folder}/${metadata.fullName}.md`, fm + body);
+		const file = await this.app.vault.create(childPath(realFolder, `${metadata.fullName}.md`), fm + body);
 
 		getDefFileManager().addDefFile(file);
 		getDefFileManager().markDirty(file);

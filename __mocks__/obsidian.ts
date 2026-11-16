@@ -39,8 +39,10 @@ export const Platform = {
 	isMobile: false,
 };
 
+// Like Obsidian: one slash between parts, no slash at the start or the end, "/" for the root
 export function normalizePath(path: string): string {
-	return path;
+	const normalized = path.replace(/[\\/]+/g, "/").replace(/^\/+|\/+$/g, "");
+	return normalized === "" ? "/" : normalized;
 }
 
 export function setTooltip() { }

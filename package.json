@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-people-metadata",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "A personal tool for managing and looking up people metadata within your notes",
 	"main": "main.js",
 	"scripts": {
