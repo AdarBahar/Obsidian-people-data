@@ -9,6 +9,17 @@ export const POPOVER_CLS = "people-metadata-definition-popover";
 const MOUSE_EXIT_CLOSE_DELAY = 300;
 const VIEWPORT_MARGIN = 8;
 
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock", "Fn", "OS"]);
+
+// A key closes the popover, but a lone modifier key or a shortcut does not.
+// Thus Cmd+C and Ctrl+C can copy the text in the popover.
+export function isDismissKey(evt: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey">): boolean {
+	if (MODIFIER_KEYS.has(evt.key)) {
+		return false;
+	}
+	return !(evt.metaKey || evt.ctrlKey);
+}
+
 let definitionPopover: DefinitionPopover;
 
 export interface Coordinates {
@@ -147,7 +158,11 @@ export class DefinitionPopover {
 		const isInside = (target: EventTarget | null) =>
 			!!target && (el.contains(target as Node) || !!anchorEl?.contains(target as Node));
 
-		listen("keydown", () => this.close());
+		listen("keydown", evt => {
+			if (isDismissKey(evt)) {
+				this.close();
+			}
+		});
 		listen("mousedown", evt => {
 			if (!isInside(evt.target)) {
 				this.close();

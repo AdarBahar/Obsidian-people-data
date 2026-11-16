@@ -17,6 +17,7 @@ import { PluginContext } from './core/plugin-context';
 import { DefinitionPreviewService } from './core/definition-preview-service';
 import { DEF_TYPE_FM } from './core/file-parser';
 import { isPathInFolder, renamedFolderPath } from './util/paths';
+import { appendTemplateBody, hasEmptyBody } from './core/file-header';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
@@ -314,15 +315,30 @@ export default class NoteDefinition extends Plugin {
 			let addedDefType = false;
 
 			const content = await this.app.vault.read(file);
-			if (content.trim().length === 0) {
+			if (this.hasDefType(content)) {
+				return;
+			}
+			if (hasEmptyBody(content)) {
+				// The file can have frontmatter from a template, for example tags.
+				// processFrontMatter keeps those keys, and the body goes after them.
+				await this.app.fileManager.processFrontMatter(file, fm => {
+					if (!fm[DEF_TYPE_FM]) {
+						fm[DEF_TYPE_FM] = DefFileType.Consolidated;
+					}
+					if (fm.color === undefined) {
+						fm.color = "blue";
+					}
+				});
 				await this.app.vault.process(file, data => {
-					if (data.trim().length > 0) {
+					const updated = appendTemplateBody(data, this.buildDefFileTemplateBody(file.basename));
+					if (updated === null) {
 						return data;
 					}
 					addedTemplate = true;
-					return this.buildDefFileTemplate(file.basename);
+					return updated;
 				});
-			} else if (!this.hasDefType(content)) {
+				addedDefType = true;
+			} else {
 				const defaultType = getSettings().defFileParseConfig.defaultFileType ?? DefFileType.Consolidated;
 				await this.app.fileManager.processFrontMatter(file, fm => {
 					if (!fm[DEF_TYPE_FM]) {
@@ -361,13 +377,9 @@ export default class NoteDefinition extends Plugin {
 		}
 	}
 
-	private buildDefFileTemplate(companyName: string): string {
-		return `---
-${DEF_TYPE_FM}: consolidated
-color: "blue"
----
-
-![${companyName} Logo](logo.png)
+	// The frontmatter of the template comes from processFrontMatter
+	private buildDefFileTemplateBody(companyName: string): string {
+		return `![${companyName} Logo](logo.png)
 
 # Person Name
 Position: Job Title

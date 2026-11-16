@@ -49,3 +49,23 @@ export function splitLines(content: string): string[] {
 export function detectEol(content: string): string {
 	return content.includes("\r\n") ? "\r\n" : "\n";
 }
+
+// Returns true if the file has no text after its frontmatter block
+export function hasEmptyBody(content: string): boolean {
+	const lines = splitLines(content);
+	return lines.slice(countFrontmatterLines(lines)).join("").trim().length === 0;
+}
+
+// Puts `body` after the frontmatter block of `content` and keeps the frontmatter.
+// Returns null if the file already has a body, so a concurrent edit is kept.
+export function appendTemplateBody(content: string, body: string): string | null {
+	if (!hasEmptyBody(content)) {
+		return null;
+	}
+	const eol = detectEol(content);
+	const lines = splitLines(content);
+	const fmLines = countFrontmatterLines(lines);
+	const head = lines.slice(0, fmLines).join(eol);
+	const text = body.replace(/^\s*\n/, "").replace(/\r?\n/g, eol);
+	return head ? `${head}${eol}${eol}${text}` : text;
+}
