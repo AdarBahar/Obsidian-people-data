@@ -2,9 +2,9 @@ import { App, TFile } from "obsidian";
 import { BaseDefParser } from "src/core/base-def-parser";
 import { DefFileParseConfig } from "src/settings";
 import { DefFileType } from "./file-type";
-// import { Definition } from "./model"; // Removed as it's no longer used
 import { FilePosition, PersonMetadata } from "./model";
 import { parseColorValue } from "./company-colors";
+import { parseFileHeader, splitLines } from "./file-header";
 
 
 export class ConsolidatedDefParser extends BaseDefParser {
@@ -26,6 +26,8 @@ export class ConsolidatedDefParser extends BaseDefParser {
 	companyColor: string;
 
 	currLine: number;
+	// Number of header lines (frontmatter and logo) before the parsed text
+	lineOffset: number;
 
 	constructor(app: App, file: TFile, parseSettings?: DefFileParseConfig) {
 		super(parseSettings);
@@ -41,51 +43,35 @@ export class ConsolidatedDefParser extends BaseDefParser {
 		this.companyName = file.basename; // Extract company name from file name
 		this.companyLogo = "";
 		this.companyColor = "";
+		this.lineOffset = 0;
 	}
 
 	async parseFile(fileContent?: string): Promise<PersonMetadata[]> {
-		if (!fileContent) {
+		if (fileContent === undefined) {
 			fileContent = await this.app.vault.cachedRead(this.file);
 		}
 
 		// Read company color from frontmatter (properties)
 		const fileMetadata = this.app.metadataCache.getFileCache(this.file);
-
-		if (fileMetadata?.frontmatter?.color) {
-			// Handle different color formats from frontmatter
-			const colorValue = fileMetadata.frontmatter.color;
-			if (typeof colorValue === 'string') {
-				this.companyColor = parseColorValue(colorValue);
-			}
+		const colorValue = fileMetadata?.frontmatter?.color;
+		if (typeof colorValue === 'string') {
+			this.companyColor = parseColorValue(colorValue);
 		}
 
-		// Ignore frontmatter (properties) from content
-		const fmPos = fileMetadata?.frontmatterPosition;
-		if (fmPos) {
-			fileContent = fileContent.slice(fmPos.end.offset+1);
-		}
+		return this.parseContent(fileContent);
+	}
 
-		// Check if first non-empty line is a company logo (image)
-		const lines = fileContent.split(/\r?\n/);
-		let startIndex = 0;
-
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i].trim();
-			if (line) {
-				if (line.match(/!\[.*\]\(.*\)/)) {
-					this.companyLogo = line;
-					startIndex = i + 1;
-				}
-				break;
-			}
+	// Parse the full file text (frontmatter and logo included).
+	// Synchronous, so it can run inside vault.process().
+	// File positions in the result are line indexes in the full file text.
+	parseContent(fileContent: string): PersonMetadata[] {
+		const lines = splitLines(fileContent);
+		const header = parseFileHeader(lines);
+		if (header.logo) {
+			this.companyLogo = header.logo;
 		}
-		
-		// Remove the logo and color lines from content before parsing
-		if (startIndex > 0) {
-			fileContent = lines.slice(startIndex).join('\n');
-		}
-
-		return this.directParseFile(fileContent);
+		this.lineOffset = header.bodyStart;
+		return this.directParseFile(lines.slice(header.bodyStart).join('\n'));
 	}
 
 	// Parse from string, no dependency on App
@@ -104,6 +90,13 @@ export class ConsolidatedDefParser extends BaseDefParser {
 				this.startNewBlock();
 				continue
 			}
+			// A "# Name" line always starts a new person, also when the divider is missing
+			if (this.isFullNameDeclaration(line) && (this.inDefinition || this.bufferValid())) {
+				if (this.bufferValid()) {
+					this.commitDefBuffer();
+				}
+				this.startNewBlock();
+			}
 			if (this.inDefinition) {
 				this.defBuffer.notes += line + "\n";
 				continue
@@ -114,9 +107,8 @@ export class ConsolidatedDefParser extends BaseDefParser {
 				continue
 			}
 			if (this.isFullNameDeclaration(line)) {
-				let from = this.currLine;
 				this.defBuffer.filePosition = {
-					from: from,
+					from: this.currLine,
 				}
 				this.defBuffer.fullName = this.extractFullName(line);
 				continue
@@ -152,8 +144,8 @@ export class ConsolidatedDefParser extends BaseDefParser {
 			linkText: `${this.file.path}${this.defBuffer.fullName ? '#' + this.defBuffer.fullName : ''}`,
 			fileType: DefFileType.Consolidated,
 			filePosition: {
-				from: this.defBuffer.filePosition?.from ?? 0,
-				to: this.currLine - 1,
+				from: (this.defBuffer.filePosition?.from ?? 0) + this.lineOffset,
+				to: this.currLine - 1 + this.lineOffset,
 			},
 			companyName: this.companyName,
 			companyLogo: this.companyLogo,
@@ -203,6 +195,8 @@ export class ConsolidatedDefParser extends BaseDefParser {
 
 	private startNewBlock() {
 		this.inDefinition = false;
+		// Drop notes or fields that have no name, so they do not join the next person
+		this.defBuffer = {};
 	}
 
 

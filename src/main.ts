@@ -1,47 +1,53 @@
-import { Menu, Notice, Plugin, TFolder, WorkspaceWindow, TFile, MarkdownView } from 'obsidian';
-import { definitionMarker } from './editor/decoration';
+import { debounce, Menu, Notice, Platform, Plugin, TAbstractFile, TFolder, TFile, MarkdownView, getFrontMatterInfo, parseYaml } from 'obsidian';
+import { definitionMarker, refreshDecorationsEffect } from './editor/decoration';
 import { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { DefManager, initDefFileManager } from './core/def-file-manager';
 import { PersonMetadata } from './core/model';
 import { getDefinitionPopover, initDefinitionPopover } from './editor/definition-popover';
 import { postProcessor } from './editor/md-postprocessor';
-import { DEFAULT_SETTINGS, SettingsTab, getSettings } from './settings';
+import { SettingsTab, getSettings, mergeSettings } from './settings';
 import { getMarkedWordUnderCursor } from './util/editor';
 import { FileExplorerDecoration, initFileExplorerDecoration } from './ui/file-explorer';
 import { EditDefinitionModal } from './editor/edit-modal';
 import { AddDefinitionModal } from './editor/add-modal';
-import { initDefinitionModal } from './editor/mobile/definition-modal';
-import { registerDefFile } from './editor/def-file-registration';
+import { getDefinitionModal, initDefinitionModal } from './editor/mobile/definition-modal';
 import { DefFileType } from './core/file-type';
 import { PluginContext } from './core/plugin-context';
 import { DefinitionPreviewService } from './core/definition-preview-service';
+import { DEF_TYPE_FM } from './core/file-parser';
+import { isPathInFolder } from './util/paths';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
 	defManager: DefManager;
 	fileExplorerDeco: FileExplorerDecoration;
-	dynamicStylesEl: HTMLStyleElement;
 	context: PluginContext;
 	previewService: DefinitionPreviewService;
+	// Paths of files that ensureDefFileRegistered() works on now
+	private registeringFiles = new Set<string>();
+	// Settings that change which people are loaded, from the last load
+	private loadedParseKey = "";
+	// Redraw names in all open notes, at most one time per burst of changes
+	private refreshViewsSoon = debounce(() => this.refreshViews(), 200, true);
 
 	async onload() {
 		// Initialize plugin context instead of global variables
-		const settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
+		const settings = mergeSettings(await this.loadData());
 		this.context = PluginContext.initialize(this.app, this, settings);
 		this.previewService = DefinitionPreviewService.getInstance();
 
-		// Expose minimal interface for HTML event handlers
-		(window as any).peopleMetadataPlugin = {
-			triggerDefPreview: (el: HTMLElement) => this.previewService.triggerDefPreview(el),
-			closeDefPreview: () => this.previewService.closeDefPreview(),
-		};
-
-
+		// Open previews from document listeners, also in popout windows
+		this.previewService.attach(this, document);
+		this.registerEvent(this.app.workspace.on("window-open", (win) => {
+			this.previewService.attach(this, win.doc);
+		}));
 
 		initDefinitionPopover(this);
 		initDefinitionModal(this.app);
 		this.defManager = initDefFileManager(this.app);
+		this.loadedParseKey = this.getParseKey();
+		this.defManager.onChange(() => this.refreshViewsSoon());
 		this.fileExplorerDeco = initFileExplorerDecoration(this.app);
 		this.registerEditorExtension(this.activeEditorExtensions);
 		this.updateEditorExts();
@@ -52,15 +58,43 @@ export default class NoteDefinition extends Plugin {
 		this.addSettingTab(new SettingsTab(this.app, this, this.saveSettings.bind(this)));
 		this.registerMarkdownPostProcessor(postProcessor);
 
-		this.initDynamicStyles();
 		this.fileExplorerDeco.run();
 	}
 
 	async saveSettings() {
 		await this.saveData(this.context.settings);
 		this.context.updateSettings(this.context.settings);
-		this.fileExplorerDeco.run();
-		await this.refreshDefinitions();
+
+		// Reload people only when a setting that changes parsing was changed.
+		// Display settings (sliders, colors, toggles) only redraw the names.
+		const parseKey = this.getParseKey();
+		if (parseKey !== this.loadedParseKey) {
+			this.loadedParseKey = parseKey;
+			this.fileExplorerDeco.run();
+			await this.refreshDefinitions();
+		} else {
+			this.refreshViewsSoon();
+		}
+	}
+
+	private getParseKey(): string {
+		const settings = getSettings();
+		return JSON.stringify([settings.defFolder, settings.defFileParseConfig]);
+	}
+
+	// Redraw the decorations in all open editors and reading views
+	private refreshViews() {
+		this.app.workspace.iterateAllLeaves(leaf => {
+			if (!(leaf.view instanceof MarkdownView)) {
+				return;
+			}
+			// @ts-expect-error, cm is not in the public API
+			const cm = leaf.view.editor?.cm as EditorView | undefined;
+			cm?.dispatch({ effects: refreshDecorationsEffect.of(null) });
+			if (leaf.view.getMode() === "preview") {
+				leaf.view.previewMode.rerender(true);
+			}
+		});
 	}
 
 	registerCommands() {
@@ -75,6 +109,25 @@ export default class NoteDefinition extends Plugin {
 		});
 
 		this.addCommand({
+			id: "preview-person",
+			name: "Preview person under cursor",
+			editorCheckCallback: (checking, editor) => {
+				const def = this.defManager.get(getMarkedWordUnderCursor(editor));
+				if (!def) {
+					return false;
+				}
+				if (!checking) {
+					if (Platform.isMobile) {
+						getDefinitionModal().open(def);
+					} else {
+						getDefinitionPopover().openAtCursor(def, editor);
+					}
+				}
+				return true;
+			}
+		});
+
+		this.addCommand({
 			id: "refresh-people",
 			name: "Refresh people",
 			callback: () => {
@@ -82,26 +135,20 @@ export default class NoteDefinition extends Plugin {
 				this.refreshDefinitions();
 			}
 		});
-
-		this.addCommand({
-			id: "update-company-colors",
-			name: "Update company colors",
-			callback: () => {
-				this.updateCompanyColors();
-				new Notice("Company colors updated");
-			}
-		});
 	}
 
 	registerEvents() {
 		this.registerEvent(this.app.workspace.on("active-leaf-change", async (leaf) => {
 			if (!leaf) return;
-			this.reloadUpdatedDefinitions();
+			// People files are reloaded by the 'changed' event, not here
 			this.updateEditorExts();
 			this.defManager.updateActiveFile();
 
-			// Check if we opened an empty file in the People folder
-			await this.checkAndAddTemplateOnOpen();
+			// Register the opened file if it is in the people folder and has no def-type
+			const activeFile = this.app.workspace.getActiveFile();
+			if (activeFile && this.shouldAutoRegister(activeFile)) {
+				await this.ensureDefFileRegistered(activeFile);
+			}
 		}));
 
 		this.registerEvent(this.app.workspace.on("editor-menu", (menu, editor) => {
@@ -146,48 +193,75 @@ export default class NoteDefinition extends Plugin {
 			}
 		}));
 
-		// Creating files under def folder should register file as definition file
-		this.registerEvent(this.app.vault.on('create', (file) => {
-			const settings = getSettings();
-			if (file.path.startsWith(settings.defFolder) && file instanceof TFile && file.extension === 'md') {
-				if (settings.autoRegisterNewFiles) {
-					// Automatically register new markdown files in the people folder as consolidated people files
-					window.setTimeout(() => {
-						this.autoRegisterNewDefFile(file);
-					}, 100); // Small delay to ensure file is fully created
+		// Creating files under def folder should register file as definition file.
+		// Obsidian sends a 'create' event for each file while the vault loads,
+		// so listen only after the layout is ready.
+		this.app.workspace.onLayoutReady(() => {
+			this.registerEvent(this.app.vault.on('create', (file) => {
+				if (!(file instanceof TFile) || file.extension !== 'md' ||
+					!isPathInFolder(file.path, this.defManager.getGlobalDefFolder())) {
+					return;
+				}
+				if (this.shouldAutoRegister(file)) {
+					this.ensureDefFileRegistered(file);
 				} else {
-					// Just update the file explorer decoration without auto-registering
 					this.fileExplorerDeco.run();
 				}
-			}
-		}));
+			}));
+			this.registerFileEvents();
+		});
 
 		this.registerEvent(this.app.metadataCache.on('changed', (file: TFile) => {
-			const currFile = this.app.workspace.getActiveFile();
-
-			// Check if the changed file is a definition file
+			// Reload the people of a changed people file
 			if (this.defManager.isDefFile(file)) {
-				// Mark the file as dirty and reload definitions
 				this.defManager.markDirty(file);
 				this.reloadUpdatedDefinitions();
 			}
 
+			// The def-context frontmatter of the active note can change
+			const currFile = this.app.workspace.getActiveFile();
 			if (currFile && currFile.path === file.path) {
 				this.defManager.updateActiveFile();
-
-				const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-
-				if(activeView) {
-					// @ts-expect-error, not typed
-					const view = activeView.editor.cm as EditorView;
-					const plugin = view.plugin(definitionMarker);
-
-					if (plugin) {
-						plugin.forceUpdate();
-					}
-				}
+				this.refreshViewsSoon();
 			}
 		}));
+	}
+
+	// Keep the people list correct when files are deleted, renamed or moved
+	private registerFileEvents() {
+		this.registerEvent(this.app.vault.on('delete', (file) => {
+			if (file instanceof TFile) {
+				this.defManager.removeFile(file.path);
+			} else if (file instanceof TFolder && this.affectsDefFolder(file.path)) {
+				this.refreshDefinitions();
+			}
+		}));
+
+		this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
+			const settings = getSettings();
+			if (file instanceof TFolder) {
+				if (oldPath === settings.defFolder) {
+					// The people folder itself was renamed or moved
+					settings.defFolder = file.path;
+					await this.saveSettings();
+				} else if (this.affectsDefFolder(oldPath) || this.affectsDefFolder(file.path)) {
+					this.fileExplorerDeco.run();
+					await this.refreshDefinitions();
+				}
+				return;
+			}
+			if (file instanceof TFile &&
+				(isPathInFolder(oldPath, this.defManager.getGlobalDefFolder()) || this.defManager.isDefFile(file))) {
+				await this.defManager.renameFile(file, oldPath);
+				this.fileExplorerDeco.run();
+			}
+		}));
+	}
+
+	// True if the folder is the people folder, is inside it, or holds it
+	private affectsDefFolder(folderPath: string): boolean {
+		const defFolder = this.defManager.getGlobalDefFolder();
+		return isPathInFolder(folderPath, defFolder) || isPathInFolder(defFolder, folderPath);
 	}
 
 	registerMenuForMarkedWords(menu: Menu, def: PersonMetadata) {
@@ -209,111 +283,86 @@ export default class NoteDefinition extends Plugin {
 		});
 	}
 
+	// The defManager change listener redraws the names after each load
 	async refreshDefinitions() {
 		await this.defManager.loadDefinitions();
-		// Update company colors after loading people
-		window.setTimeout(() => this.updateCompanyColors(), 100);
 	}
 
-	reloadUpdatedDefinitions() {
-		this.defManager.loadUpdatedFiles();
-		// Update company colors after loading updated people
-		window.setTimeout(() => this.updateCompanyColors(), 100);
+	async reloadUpdatedDefinitions() {
+		await this.defManager.loadUpdatedFiles();
 	}
 
-	async autoRegisterNewDefFile(file: TFile) {
-		try {
-			// Check if the file already has frontmatter with def-type
-			const fileContent = await this.app.vault.cachedRead(file);
-			const fileMetadata = this.app.metadataCache.getFileCache(file);
-
-			// If file already has def-type frontmatter, don't modify it
-			if (fileMetadata?.frontmatter?.['def-type']) {
-				this.fileExplorerDeco.run();
-				await this.refreshDefinitions();
-				return;
-			}
-
-			// If file is empty or only has whitespace, add frontmatter and basic template
-			let contentWithoutFrontmatter = fileContent;
-			const fmPos = fileMetadata?.frontmatterPosition;
-			if (fmPos) {
-				contentWithoutFrontmatter = fileContent.slice(fmPos.end.offset + 1);
-			}
-			contentWithoutFrontmatter = contentWithoutFrontmatter.trim();
-
-			if (contentWithoutFrontmatter.length === 0) {
-				// File is empty, add full template
-				await this.addDefFileTemplate(file);
-			} else {
-				// File has content, just add frontmatter
-				registerDefFile(this.app, file, DefFileType.Consolidated);
-			}
-
-			// Update UI and refresh people
-			this.fileExplorerDeco.run();
-			await this.refreshDefinitions();
-
-			new Notice(`Auto-registered ${file.basename} as a People file`);
-		} catch (error) {
-			console.error(`Failed to auto-register ${file.path}:`, error);
-		}
+	private shouldAutoRegister(file: TAbstractFile): file is TFile {
+		return getSettings().autoRegisterNewFiles &&
+			file instanceof TFile &&
+			file.extension === 'md' &&
+			isPathInFolder(file.path, this.defManager.getGlobalDefFolder());
 	}
 
-	async checkAndAddTemplateOnOpen() {
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) return;
-
-		const settings = getSettings();
-
-		// Check if the file is in the People folder and auto-registration is enabled
-		if (!activeFile.path.startsWith(settings.defFolder) ||
-			!settings.autoRegisterNewFiles ||
-			activeFile.extension !== 'md') {
+	// Add the template to an empty file, or add def-type to a file that has none.
+	// The decision uses the file text, not the metadata cache, which can be stale.
+	// A def-type that already exists is never changed.
+	async ensureDefFileRegistered(file: TFile) {
+		// The 'create' and 'active-leaf-change' events can both arrive for a new file
+		if (this.registeringFiles.has(file.path)) {
 			return;
 		}
-
+		this.registeringFiles.add(file.path);
 		try {
-			// Read the file content
-			const fileContent = await this.app.vault.cachedRead(activeFile);
-			const fileMetadata = this.app.metadataCache.getFileCache(activeFile);
+			let addedTemplate = false;
+			let addedDefType = false;
 
-			// Check if file is essentially empty (no content or only whitespace)
-			let contentWithoutFrontmatter = fileContent;
-			const fmPos = fileMetadata?.frontmatterPosition;
-			if (fmPos) {
-				contentWithoutFrontmatter = fileContent.slice(fmPos.end.offset + 1);
+			const content = await this.app.vault.read(file);
+			if (content.trim().length === 0) {
+				await this.app.vault.process(file, data => {
+					if (data.trim().length > 0) {
+						return data;
+					}
+					addedTemplate = true;
+					return this.buildDefFileTemplate(file.basename);
+				});
+			} else if (!this.hasDefType(content)) {
+				const defaultType = getSettings().defFileParseConfig.defaultFileType ?? DefFileType.Consolidated;
+				await this.app.fileManager.processFrontMatter(file, fm => {
+					if (!fm[DEF_TYPE_FM]) {
+						fm[DEF_TYPE_FM] = defaultType;
+						addedDefType = true;
+					}
+				});
 			}
-			contentWithoutFrontmatter = contentWithoutFrontmatter.trim();
-			const hasDefType = fileMetadata?.frontmatter?.['def-type'];
 
-			// If file is empty and doesn't have def-type, add template
-			if (contentWithoutFrontmatter.length === 0 && !hasDefType) {
-				await this.addDefFileTemplate(activeFile);
-				new Notice(`Added People template to ${activeFile.basename}`);
-
-				// Update UI and refresh people
-				this.fileExplorerDeco.run();
-				await this.refreshDefinitions();
-			}
-			// If file has content but no def-type, just add frontmatter
-			else if (!hasDefType && contentWithoutFrontmatter.length > 0) {
-				await registerDefFile(this.app, activeFile, DefFileType.Consolidated);
-				new Notice(`Registered ${activeFile.basename} as People file`);
-
-				// Update UI and refresh people
+			if (addedTemplate || addedDefType) {
+				new Notice(addedTemplate ?
+					`Added People template to ${file.basename}` :
+					`Registered ${file.basename} as People file`);
 				this.fileExplorerDeco.run();
 				await this.refreshDefinitions();
 			}
 		} catch (error) {
-			console.error(`Failed to check/add template for ${activeFile.path}:`, error);
+			console.error(`Failed to register ${file.path}:`, error);
+		} finally {
+			this.registeringFiles.delete(file.path);
 		}
 	}
 
-	async addDefFileTemplate(file: TFile) {
-		const companyName = file.basename;
-		const template = `---
-def-type: consolidated
+	// Reads def-type from the frontmatter in the file text
+	private hasDefType(content: string): boolean {
+		const info = getFrontMatterInfo(content);
+		if (!info.exists) {
+			return false;
+		}
+		try {
+			const fm = parseYaml(info.frontmatter);
+			return !!fm?.[DEF_TYPE_FM];
+		} catch (e) {
+			// The YAML is not valid. Do not change a file that we cannot read correctly.
+			return true;
+		}
+	}
+
+	private buildDefFileTemplate(companyName: string): string {
+		return `---
+${DEF_TYPE_FM}: consolidated
 color: "blue"
 ---
 
@@ -336,48 +385,6 @@ Notes about the second person.
 
 ---
 `;
-
-		// Use FileManager.processFrontMatter for atomic frontmatter updates
-		// First, add the frontmatter atomically
-		await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-			frontmatter["def-type"] = "consolidated";
-			frontmatter["color"] = "blue";
-		});
-
-		// Then add the content body
-		const bodyContent = `
-![${companyName} Logo](logo.png)
-
-# Person Name
-Position: Job Title
-Department: Department Name
-
-Notes about this person go here.
-You can add multiple lines of notes.
-
----
-
-# Another Person
-Position: Another Job Title
-Department: Another Department
-
-Notes about the second person.
-
----
-`;
-
-		await this.app.vault.process(file, (data) => {
-			// Get existing frontmatter and append body content
-			const fileMetadata = this.app.metadataCache.getFileCache(file);
-			const fmPos = fileMetadata?.frontmatterPosition;
-			if (fmPos) {
-				// File has frontmatter, append body after it
-				return data + bodyContent;
-			} else {
-				// No frontmatter (shouldn't happen after processFrontMatter), but handle gracefully
-				return template;
-			}
-		});
 	}
 
 	updateEditorExts() {
@@ -396,62 +403,12 @@ Notes about the second person.
 		this.app.workspace.updateOptions();
 	}
 
-	initDynamicStyles() {
-		// Create a style element for dynamic company colors
-		this.dynamicStylesEl = document.head.createEl('style', {
-			attr: {
-				'data-plugin': 'people-metadata'
-			}
-		});
-		this.updateCompanyColors();
-	}
-
-	updateCompanyColors() {
-		if (!this.dynamicStylesEl) {
-			return;
-		}
-
-		const companies = new Map<string, string>();
-		const defRepo = this.defManager?.globalDefs;
-
-		if (defRepo) {
-			// Collect all company colors
-			for (const [, fileMap] of defRepo.fileDefMap) {
-				for (const [, person] of fileMap) {
-					if (person.companyName && person.companyColor) {
-						companies.set(person.companyName, person.companyColor);
-					}
-				}
-			}
-		}
-
-		// Generate CSS rules for each company
-		let cssRules = '';
-		for (const [companyName, color] of companies) {
-			const safeName = companyName.replace(/[^a-zA-Z0-9-_]/g, '-');
-			cssRules += `
-.people-metadata-def-decoration[data-company="${safeName}"] {
-	--person-underline-color: ${color} !important;
-}
-`;
-		}
-
-		this.dynamicStylesEl.textContent = cssRules;
-	}
-
 	onunload() {
 		getDefinitionPopover().cleanUp();
-
-		// Clean up dynamic styles
-		if (this.dynamicStylesEl) {
-			this.dynamicStylesEl.remove();
-		}
 
 		// Clean up context and services
 		PluginContext.cleanup();
 		DefinitionPreviewService.cleanup();
 
-		// Clean up global interface
-		delete (window as any).peopleMetadataPlugin;
 	}
 }

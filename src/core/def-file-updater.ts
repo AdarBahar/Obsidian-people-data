@@ -1,14 +1,17 @@
-import { App, Notice } from "obsidian";
+import { App, Notice, TFile } from "obsidian";
 import { getSettings } from "src/settings";
-import { logError, logWarn } from "src/util/log";
-import { normaliseWord } from "src/util/editor";
+import { logError } from "src/util/log";
+import { normaliseWord } from "src/util/text";
+import { ConsolidatedDefParser } from "./consolidated-def-parser";
 import { getDefFileManager } from "./def-file-manager";
-import { FileParser } from "./file-parser";
+import { detectEol, parseFileHeader, splitLines } from "./file-header";
+import { DEF_TYPE_FM } from "./file-parser";
 import { DefFileType } from "./file-type";
 import { FrontmatterBuilder } from "./fm-builder";
 import { FilePosition, PersonMetadata } from "./model";
 
 
+// All writes use vault.process(), so each change applies to the current file data.
 export class DefFileUpdater {
 	app: App;
 
@@ -16,133 +19,151 @@ export class DefFileUpdater {
 		this.app = app;
 	}
 
-	async updateMetadata(metadata: PersonMetadata) {
-		if (metadata.fileType === DefFileType.Atomic) {
-			await this.updateAtomicMetadataFile(metadata);
-		} else if (metadata.fileType === DefFileType.Consolidated) {
-			await this.updateConsolidatedMetadataFile(metadata);
-		} else {
-			return;
+	// Replace the entry of `original` with the values of `updated`.
+	// Returns true if the file was changed.
+	async updateMetadata(original: PersonMetadata, updated: PersonMetadata): Promise<boolean> {
+		let changed = false;
+		try {
+			if (original.fileType === DefFileType.Atomic) {
+				changed = await this.updateAtomicMetadataFile(original.file, updated);
+			} else if (original.fileType === DefFileType.Consolidated) {
+				changed = await this.updateConsolidatedMetadataFile(original, updated);
+			}
+		} catch (e) {
+			logError(`Update of ${original.file.path} failed: ${e}`);
+		}
+		if (!changed) {
+			new Notice(`Could not save the changes. '${original.fullName}' was not found in ${original.file.basename}.`);
+			return false;
 		}
 		await getDefFileManager().loadUpdatedFiles();
-		new Notice("Metadata successfully modified");
+		new Notice(`Updated '${updated.fullName}'`);
+		return true;
 	}
 
-	private async updateAtomicMetadataFile(metadata: PersonMetadata) {
-		await this.app.vault.process(metadata.file, () => metadata.notes);
+	private async updateAtomicMetadataFile(file: TFile, updated: PersonMetadata): Promise<boolean> {
+		await this.app.vault.process(file, data => {
+			const lines = splitLines(data);
+			// Keep the frontmatter and the logo line
+			const header = parseFileHeader(lines);
+			const newLines = lines.slice(0, header.bodyStart)
+				.concat(this.constructLinesFromMetadata(updated, false));
+			return newLines.join(detectEol(data));
+		});
+		return true;
 	}
 
-	private async updateConsolidatedMetadataFile(metadata: PersonMetadata) {
-		const file = metadata.file;
-		const fileContent = await this.app.vault.read(file);
-
-		const fileParser = new FileParser(this.app, file);
-		const metadatas = await fileParser.parseFile(fileContent);
-		const lines = fileContent.split(/\r?\n/);
-
-		const fileMetadata = metadatas.find(fileMetadata => 
-			normaliseWord(fileMetadata.fullName) === normaliseWord(metadata.fullName)
-		);
-		if (!fileMetadata) {
-			logError("File metadata not found, cannot edit");
-			return;
-		}
-		if (fileMetadata.filePosition) {
-			const newLines = this.replaceMetadata(fileMetadata.filePosition, metadata, lines);
-			const newContent = newLines.join("\n");
-
-			await this.app.vault.process(file, () => newContent);
-		}
+	private async updateConsolidatedMetadataFile(original: PersonMetadata, updated: PersonMetadata): Promise<boolean> {
+		let found = false;
+		await this.app.vault.process(original.file, data => {
+			const parser = new ConsolidatedDefParser(this.app, original.file);
+			const entries = parser.parseContent(data);
+			const entry = entries.find(e =>
+				normaliseWord(e.fullName) === normaliseWord(original.fullName)
+			);
+			if (!entry?.filePosition) {
+				return data;
+			}
+			found = true;
+			const newLines = this.replaceMetadata(entry.filePosition, updated, splitLines(data));
+			return newLines.join(detectEol(data));
+		});
+		return found;
 	}
 
-	async addMetadata(metadata: Partial<PersonMetadata>, folder?: string) {
-		if (!metadata.fileType) {
-			logError("File type missing");
-			return;
+	// Returns true if the person was added.
+	async addMetadata(metadata: Partial<PersonMetadata>, folder?: string): Promise<boolean> {
+		let added = false;
+		try {
+			if (metadata.fileType === DefFileType.Consolidated) {
+				added = await this.addConsolidatedFileMetadata(metadata);
+			} else if (metadata.fileType === DefFileType.Atomic) {
+				added = await this.addAtomicFileMetadata(metadata, folder);
+			} else {
+				logError("File type missing");
+			}
+		} catch (e) {
+			logError(`Add of '${metadata.fullName}' failed: ${e}`);
 		}
-		if (metadata.fileType === DefFileType.Consolidated) {
-			await this.addConsolidatedFileMetadata(metadata);
-		} else if (metadata.fileType === DefFileType.Atomic) {
-			await this.addAtomicFileMetadata(metadata, folder);
+		if (!added) {
+			new Notice(`Could not add '${metadata.fullName}'`);
+			return false;
 		}
 		await getDefFileManager().loadUpdatedFiles();
-		new Notice("Metadata successfully added");
+		new Notice(`Added '${metadata.fullName}'`);
+		return true;
 	}
 
-	private async addAtomicFileMetadata(metadata: Partial<PersonMetadata>, folder?: string) {
+	private async addAtomicFileMetadata(metadata: Partial<PersonMetadata>, folder?: string): Promise<boolean> {
 		if (!folder) {
 			logError("Folder missing for atomic file add");
-			return;
-		}
-		if (!metadata.notes) {
-			logWarn("No notes given");
-			return;
+			return false;
 		}
 		const fmBuilder = new FrontmatterBuilder();
-		fmBuilder.add("metadata-type", "atomic");
+		fmBuilder.add(DEF_TYPE_FM, DefFileType.Atomic);
 		const fm = fmBuilder.finish();
-		const file = await this.app.vault.create(`${folder}/${metadata.fullName}.md`, fm+metadata.notes);
+		const body = this.constructLinesFromMetadata(metadata, false).join("\n");
+		const file = await this.app.vault.create(`${folder}/${metadata.fullName}.md`, fm + body);
 
 		getDefFileManager().addDefFile(file);
 		getDefFileManager().markDirty(file);
+		return true;
 	}
 
-	private async addConsolidatedFileMetadata(metadata: Partial<PersonMetadata>) {
+	private async addConsolidatedFileMetadata(metadata: Partial<PersonMetadata>): Promise<boolean> {
 		const file = metadata.file;
 		if (!file) {
 			logError("Add metadata failed, no file given");
-			return;
+			return false;
 		}
-		const fileContent = await this.app.vault.read(file);
-		let lines = fileContent.split(/\r?\n/);
-		lines = this.removeTrailingBlankNewlines(lines);
-		if (!this.checkEndedWithSeparator(lines)) {
-			this.addSeparator(lines);
-		}
-		const addedLines = this.constructLinesFromMetadata(metadata);
-		const newLines = lines.concat(addedLines);
-		const newContent = newLines.join("\n");
-
-		await this.app.vault.process(file, () => newContent);
-	}
-
-	private addSeparator(lines: string[]) {
-		const dividerSettings = getSettings().defFileParseConfig.divider;
-		let sepChoice = dividerSettings.underscore ? "___" : "---";
-		lines.push('', sepChoice);
-	}
-	
-	private checkEndedWithSeparator(lines: string[]): boolean {
-		const settings = getSettings();
-		if (settings.defFileParseConfig.divider.dash && lines[lines.length-1].startsWith("---")) {
-			return true;
-		}
-		if (settings.defFileParseConfig.divider.underscore && lines[lines.length-1].startsWith("___")) {
-			return true;
-		}
-		return false;
-	}
-
-	private removeTrailingBlankNewlines(lines: string[]): string[] {
-		let blankLines = 0;
-		for (let i = 0; i < lines.length; i++) {
-			const currLine = lines[lines.length - 1 - i];
-			if (/\S/.test(currLine)) {
-				blankLines = i;
-				break;
+		await this.app.vault.process(file, data => {
+			const lines = this.removeTrailingBlankLines(splitLines(data));
+			const header = parseFileHeader(lines);
+			const hasEntries = lines.slice(header.bodyStart).some(line => line.trim().length > 0);
+			if (hasEntries && !this.endsWithSeparator(lines)) {
+				lines.push('', this.getDivider());
 			}
-		}
-		return lines.slice(0, lines.length - blankLines);
+			if (lines.length > 0) {
+				lines.push('');
+			}
+			const newLines = lines.concat(this.constructLinesFromMetadata(metadata, true));
+			return newLines.join(detectEol(data));
+		});
+		return true;
 	}
 
-	private replaceMetadata(position: FilePosition, metadata: PersonMetadata, lines: string[]) {
+	// The divider that the parser accepts with the current settings
+	private getDivider(): string {
+		return getSettings().defFileParseConfig.divider.dash ? "---" : "___";
+	}
+
+	private endsWithSeparator(lines: string[]): boolean {
+		if (lines.length === 0) {
+			return false;
+		}
+		const lastLine = lines[lines.length - 1];
+		const divider = getSettings().defFileParseConfig.divider;
+		return (divider.dash && lastLine.startsWith("---")) ||
+			(divider.underscore && lastLine.startsWith("___"));
+	}
+
+	private removeTrailingBlankLines(lines: string[]): string[] {
+		const result = [...lines];
+		while (result.length > 0 && result[result.length - 1].trim() === "") {
+			result.pop();
+		}
+		return result;
+	}
+
+	// Replaces lines from..to (inclusive). The divider after the entry stays in place.
+	private replaceMetadata(position: FilePosition, metadata: Partial<PersonMetadata>, lines: string[]) {
 		const before = lines.slice(0, position.from);
-		const after = lines.slice(position.to+1);
-		const newLines = this.constructLinesFromMetadata(metadata);
+		const after = lines.slice(position.to + 1);
+		const newLines = this.constructLinesFromMetadata(metadata, false);
 		return before.concat(newLines, after);
 	}
 
-	private constructLinesFromMetadata(metadata: Partial<PersonMetadata>): string[] {
+	private constructLinesFromMetadata(metadata: Partial<PersonMetadata>, withDivider: boolean): string[] {
 		const lines = [`# ${metadata.fullName}`];
 		if (metadata.position) {
 			lines.push(`Position: ${metadata.position}`);
@@ -151,7 +172,14 @@ export class DefFileUpdater {
 			lines.push(`Department: ${metadata.department}`);
 		}
 		const trimmedNotes = metadata.notes ? metadata.notes.replace(/\s+$/g, '') : '';
-		lines.push('', trimmedNotes, '', '---');
+		if (trimmedNotes) {
+			lines.push('', trimmedNotes);
+		}
+		// A blank line before the divider, so markdown does not read "---" as a heading underline
+		lines.push('');
+		if (withDivider) {
+			lines.push(this.getDivider());
+		}
 		return lines;
 	}
 }

@@ -33,28 +33,28 @@ A personal tool for managing and looking up people metadata within your notes. C
 
 ## 📖 Basic Usage
 
-1. Create a folder, right-click on the folder in your file explorer, and select `Set people metadata folder`. This registers the folder as your people metadata folder.
+1. Create a folder, right-click on the folder in your file explorer, and select `Set as people folder`. This registers the folder as your people metadata folder.
 2. Within the folder, create metadata files (with any name of your choice).
 3. Add a person metadata entry using the `Add a Person` command. This will display a user-friendly modal where you can input the person's details and choose which company they belong to.
-4. Once a person metadata entry is added, the person's name should be underlined in your notes. You may preview the metadata by hovering over the underlined name with the mouse, or triggering the `Preview person metadata` command when your cursor is on the name.
+4. Once a person metadata entry is added, the person's name should be underlined in your notes. You may preview the metadata by hovering over the underlined name with the mouse, or triggering the `Preview person under cursor` command when your cursor is on the name.
 
 ### Editor menu
 
 Options available:
-- Go to person metadata (jump to metadata of person)
+- Go to definition (jump to the entry of the person)
 - Add a Person (add a new person to an existing company or create a new company)
-- Edit person metadata (right-click on an underlined metadata entry)
+- Edit definition (right-click on an underlined name)
 
 ### Commands
 
 You may want to assign hotkeys to the commands available for easy access:
 - Add a Person
+- Preview person under cursor
 - Refresh people
-- Update company colors
 
 ## How it works
 
-**Note Metadata** does not maintain any hidden metadata files for your people metadata. 
+**People Metadata** does not maintain any hidden metadata files for your people metadata. 
 All metadata entries are placed in your vault and form part of your notes.
 You will notice that added metadata entries will create entries within your selected metadata file. 
 You may edit these entries freely to add/edit your metadata, but if you do so, make sure to adhere strictly to the metadata rules below.
@@ -77,13 +77,13 @@ A `consolidated` metadata file is parsed according to the following rules:
 
 1. The **file name** represents the **company name** (e.g., `TechCorp.md` represents TechCorp company).
 2. The **frontmatter** can optionally contain a company color setting using the `color` property. You can use either predefined color names (e.g., `color: "blue"`) or hex codes (e.g., `color: "#0066cc"`). This color will be used for the double underline decoration of all people in this company.
-3. The **first line** (after frontmatter) can optionally contain a company logo using markdown image syntax (e.g., `![Company Logo](logo.png)`). If the logo image fails to load or is broken, a default logo will be displayed showing the first two letters of the company name.
+3. The **first line** (after frontmatter) can optionally contain a company logo. Use the markdown image syntax (e.g., `![Company Logo](logo.png)`) or the embed syntax (e.g., `![[logo.png]]`). The line must contain only the image. If the logo image fails to load or is broken, a default logo will be displayed showing the first two letters of the company name.
 4. A metadata block consists of a **full name, job position, department, and notes**. They must be provided **strictly** in that order.
-4. A full name is denoted with a line in the following format `# <name>`. This is rendered as a markdown header in Obsidian.
-5. A job position is specified with a line starting with `Position: `.
-6. A department is specified with a line starting with `Department: `.
-7. A line that occurs after a registered **full name** and is not a position or department is deemed to be notes. Notes can be multi-line. All subsequent lines are notes until the metadata block divider is encountered. You may write markdown here, which will be formatted similar to Obsidian's markdown formatting.
-8. A line with nothing but three hyphens `---` is used as a divider to separate metadata blocks. This is rendered as a delimiting line in Obsidian. (This divider can be configured in the settings to recognise three underscores `___` as well)
+5. A full name is denoted with a line in the following format `# <name>`. This is rendered as a markdown header in Obsidian. A `# <name>` line always starts a new person, also when the divider before it is missing. Use `##` or smaller headings inside notes.
+6. A job position is specified with a line starting with `Position: `.
+7. A department is specified with a line starting with `Department: `.
+8. A line that occurs after a registered **full name** and is not a position or department is deemed to be notes. Notes can be multi-line. All subsequent lines are notes until the metadata block divider or the next full name is encountered. You may write markdown here, which will be formatted similar to Obsidian's markdown formatting.
+9. A line with nothing but three hyphens `---` is used as a divider to separate metadata blocks. This is rendered as a delimiting line in Obsidian. (This divider can be configured in the settings to recognise three underscores `___` as well)
 
 Example metadata file (`TechCorp.md`):
 
@@ -280,14 +280,14 @@ Whenever you find that the plugin is not detecting certain people or people file
 3. Check that your files have the correct `def-type: consolidated` frontmatter
 
 ### Names Not Being Detected?
-1. Ensure the person's name matches exactly (case-sensitive)
+1. Ensure the person's name matches the `# Name` line (the match ignores upper and lower case)
 2. Run "Refresh people" command to reload the metadata
 3. Check that the person file is in the correct People folder
 
 ### Company Colors Not Showing?
-1. Run the "Update company colors" command
-2. Verify the color property is set correctly in the company file frontmatter
-3. Try using predefined color names instead of hex codes
+1. Verify the color property is set correctly in the company file frontmatter
+2. Use a predefined color name, a hex code (`#0066cc`), a CSS color name, or `rgb()`/`hsl()`. Other values are ignored.
+3. Run the "Refresh people" command
 
 ## 📚 Documentation
 

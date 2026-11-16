@@ -1,39 +1,26 @@
-import { Platform } from "obsidian";
-import { getSettings, PopoverEventSettings } from "src/settings";
-import { DefinitionPreviewService } from "src/core/definition-preview-service";
-
-const previewService = DefinitionPreviewService.getInstance();
-const triggerFunc = previewService.getTriggerFunctionString();
-const leaveFunc = previewService.getCloseFunctionString();
+import { getSettings } from "src/settings";
 
 export const DEF_DECORATION_CLS = "people-metadata-def-decoration";
 
-// For normal decoration of people
-export function getDecorationAttrs(phrase: string, companyName?: string): { [key: string]: string } {
-	let attributes: { [key: string]: string } = {
+// Attributes for a decorated person name.
+// Previews open through document listeners (see DefinitionPreviewService), not inline handlers.
+// `companyColor` must come from parseColorValue(), which allows only safe color values.
+export function getDecorationAttrs(phrase: string, companyName?: string, companyColor?: string): { [key: string]: string } {
+	const attributes: { [key: string]: string } = {
 		def: phrase,
-	}
-	const settings = getSettings();
-	if (Platform.isMobile) {
-		attributes.onclick = triggerFunc;
-		return attributes;
-	}
-	if (settings.popoverEvent === PopoverEventSettings.Click) {
-		attributes.onclick = triggerFunc;
-	} else {
-		attributes.onmouseenter = triggerFunc;
-		attributes.onmouseleave = leaveFunc;
-	}
-	if (!settings.enableSpellcheck) {
+	};
+	if (!getSettings().enableSpellcheck) {
 		attributes.spellcheck = "false";
 	}
-	
-	// Add company data attribute for CSS targeting
+
+	// Company data attribute for CSS snippets of the user
 	if (companyName) {
-		const safeName = companyName.replace(/[^a-zA-Z0-9-_]/g, '-');
-		attributes['data-company'] = safeName;
+		attributes['data-company'] = companyName.replace(/[^a-zA-Z0-9-_]/g, '-');
 	}
-	
+	// The underline color is set on each name, so it works in all windows
+	if (companyColor) {
+		attributes.style = `--person-underline-color: ${companyColor}`;
+	}
+
 	return attributes;
 }
-

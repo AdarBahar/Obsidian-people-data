@@ -1,4 +1,4 @@
-import { RangeSetBuilder } from "@codemirror/state";
+import { RangeSetBuilder, StateEffect } from "@codemirror/state";
 import {
   Decoration,
   DecorationSet,
@@ -10,26 +10,20 @@ import {
 } from "@codemirror/view";
 import { DEF_DECORATION_CLS, getDecorationAttrs } from "./common";
 import { getDefFileManager } from "src/core/def-file-manager";
-import { LineScanner } from "./definition-search";
+import { LineScanner, PhraseInfo } from "./definition-search";
 import { PTreeNode } from "./prefix-tree";
 
-// Information of phrase that can be used to add decorations within the editor
-interface PhraseInfo {
-	from: number;
-	to: number;
-	phrase: string;
-}
+export type { PhraseInfo };
 
-let markedPhrases: PhraseInfo[] = [];
-
-export function getMarkedPhrases(): PhraseInfo[] {
-	return markedPhrases;
-}
+// Dispatch this effect to rebuild the decorations, for example after people were reloaded
+export const refreshDecorationsEffect = StateEffect.define<null>();
 
 // View plugin to mark definitions
 export class DefinitionMarker implements PluginValue {
 	decorations: DecorationSet;
 	editorView: EditorView;
+	// Marked names of this editor, sorted by position
+	markedPhrases: PhraseInfo[] = [];
 
 	constructor(view: EditorView) {
 		this.editorView = view;
@@ -37,15 +31,11 @@ export class DefinitionMarker implements PluginValue {
 	}
 
 	update(update: ViewUpdate) {
-		if (update.docChanged || update.viewportChanged || update.focusChanged) {
+		const refresh = update.transactions.some(tr => tr.effects.some(e => e.is(refreshDecorationsEffect)));
+		if (refresh || update.docChanged || update.viewportChanged || update.focusChanged) {
 			this.decorations = this.buildDecorations(update.view);
 			return
 		}
-	}
-
-	public forceUpdate() {
-		this.decorations = this.buildDecorations(this.editorView);
-		return;
 	}
 
 	destroy() {}
@@ -54,28 +44,28 @@ export class DefinitionMarker implements PluginValue {
 		const builder = new RangeSetBuilder<Decoration>();
 		const phraseInfos: PhraseInfo[] = [];
 
-		for (let { from, to } of view.visibleRanges) {
+		for (const { from, to } of view.visibleRanges) {
 			const text = view.state.sliceDoc(from, to);
 			phraseInfos.push(...scanText(text, from));
 		}
 
 		phraseInfos.forEach(wordPos => {
-			const companyName = getDefFileManager().getPersonCompany(wordPos.phrase);
-			const attributes = getDecorationAttrs(wordPos.phrase, companyName);
+			const person = getDefFileManager().get(wordPos.phrase);
+			const attributes = getDecorationAttrs(wordPos.phrase, person?.companyName, person?.companyColor);
 			builder.add(wordPos.from, wordPos.to, Decoration.mark({
 				class: DEF_DECORATION_CLS,
 				attributes: attributes,
 			}));
 		});
 
-		markedPhrases = phraseInfos;
+		this.markedPhrases = phraseInfos;
 		return builder.finish();
 	}
 }
 
 // Scan text and return phrases and their positions that require decoration
 export function scanText(text: string, offset: number, pTree?: PTreeNode): PhraseInfo[] {
-	let phraseInfos: PhraseInfo[] = [];
+	const phraseInfos: PhraseInfo[] = [];
 	const lines = text.split(/\r?\n/);
 	let internalOffset = offset;
 	const lineScanner = new LineScanner(pTree);
