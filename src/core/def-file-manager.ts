@@ -272,7 +272,8 @@ export class DefManager {
 
 		for (const file of dirty.values()) {
 			const defs = await this.parseFile(file);
-			this.globalDefs.removeFile(file.path);
+			// Keep the slot of the file in the map: the first file wins for duplicate names
+			this.globalDefs.clearFile(file.path);
 			defs.forEach(def => this.globalDefs.set(def));
 		}
 
@@ -398,6 +399,11 @@ export class DefinitionRepo {
 			return;
 		}
 		defMap.set(normalizedKey, metadata);
+	}
+
+	// Remove the people of a file, but keep its position in the file order
+	clearFile(filePath: string) {
+		this.fileDefMap.get(filePath)?.clear();
 	}
 
 	removeFile(filePath: string) {

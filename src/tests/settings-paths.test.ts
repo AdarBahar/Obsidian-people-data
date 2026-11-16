@@ -1,5 +1,5 @@
 import { DEFAULT_DEF_FOLDER, DEFAULT_SETTINGS, mergeSettings } from "src/settings";
-import { isPathInFolder } from "src/util/paths";
+import { isPathInFolder, renamedFolderPath } from "src/util/paths";
 
 describe("isPathInFolder", () => {
 	test("matches the folder and files inside it", () => {
@@ -43,5 +43,22 @@ describe("mergeSettings", () => {
 		settings.defPopoverConfig.maxWidth = 999;
 		expect(DEFAULT_SETTINGS.defFileParseConfig?.divider.underscore).toBe(false);
 		expect(DEFAULT_SETTINGS.defPopoverConfig?.maxWidth).toBe(150);
+	});
+});
+
+describe("renamedFolderPath", () => {
+	test("follows a rename of the folder itself", () => {
+		expect(renamedFolderPath("people", "people", "contacts")).toBe("contacts");
+	});
+
+	test("follows a rename of a parent folder", () => {
+		expect(renamedFolderPath("Work/people", "Work", "Archive")).toBe("Archive/people");
+		expect(renamedFolderPath("Work/team/people", "Work/team", "Old/team")).toBe("Old/team/people");
+	});
+
+	test("ignores other folders, also folders with the same start", () => {
+		expect(renamedFolderPath("Work/people", "Wor", "X")).toBeNull();
+		expect(renamedFolderPath("Work/people", "Work/people/sub", "Work/people/sub2")).toBeNull();
+		expect(renamedFolderPath("people", "people-archive", "old")).toBeNull();
 	});
 });

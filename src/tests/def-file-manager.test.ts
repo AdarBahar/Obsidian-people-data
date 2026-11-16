@@ -127,3 +127,18 @@ test("a reload parses only the file that changed (P2)", async () => {
 	expect(manager.get("bob ray")?.notes).toBe("New notes.");
 	expect(manager.get("ann lee")).toBeDefined();
 });
+
+test("a reload keeps the file order, so the first file still wins for a duplicate name", async () => {
+	const { app, acme } = setup();
+	contents["people/Beta.md"] = "---\ndef-type: consolidated\n---\n# Ann Lee\n\nBeta Ann.\n";
+	const manager = await makeManager(app);
+	expect(manager.get("ann lee")?.file.path).toBe("people/Acme.md");
+
+	// An unrelated change in the first file
+	contents["people/Acme.md"] = "---\ndef-type: consolidated\n---\n# Ann Lee\n\nChanged.\n";
+	manager.markDirty(acme);
+	await manager.loadUpdatedFiles();
+
+	expect(manager.get("ann lee")?.file.path).toBe("people/Acme.md");
+	expect(manager.get("ann lee")?.notes).toBe("Changed.");
+});

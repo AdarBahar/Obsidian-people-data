@@ -16,7 +16,7 @@ import { DefFileType } from './core/file-type';
 import { PluginContext } from './core/plugin-context';
 import { DefinitionPreviewService } from './core/definition-preview-service';
 import { DEF_TYPE_FM } from './core/file-parser';
-import { isPathInFolder } from './util/paths';
+import { isPathInFolder, renamedFolderPath } from './util/paths';
 
 export default class NoteDefinition extends Plugin {
 	activeEditorExtensions: Extension[] = [];
@@ -240,9 +240,10 @@ export default class NoteDefinition extends Plugin {
 		this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
 			const settings = getSettings();
 			if (file instanceof TFolder) {
-				if (oldPath === settings.defFolder) {
-					// The people folder itself was renamed or moved
-					settings.defFolder = file.path;
+				const newDefFolder = renamedFolderPath(settings.defFolder, oldPath, file.path);
+				if (newDefFolder !== null) {
+					// The people folder or one of its parent folders was renamed or moved
+					settings.defFolder = newDefFolder;
 					await this.saveSettings();
 				} else if (this.affectsDefFolder(oldPath) || this.affectsDefFolder(file.path)) {
 					this.fileExplorerDeco.run();
