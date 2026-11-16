@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # "gh release create" needs write access. The repository gives workflows read access only.
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v3
