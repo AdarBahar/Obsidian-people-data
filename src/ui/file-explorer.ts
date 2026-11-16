@@ -2,6 +2,7 @@ import { App } from "obsidian";
 import { DEFAULT_DEF_FOLDER, getSettings } from "src/settings";
 import { FileExplorerView } from "src/types/obsidian";
 import { logError } from "src/util/log";
+import { isPathInFolder } from "src/util/paths";
 
 // Declare sleep as a global function available in Obsidian environment
 declare function sleep(ms: number): Promise<void>;
@@ -91,7 +92,7 @@ export class FileExplorerDecoration {
 				fileTag.remove();
 			});
 
-			if (k.startsWith(defFolder)) {
+			if (isPathInFolder(k, defFolder)) {
 				this.tagFile(fileExpView, k, "PEOPLE");
 			}
 		});

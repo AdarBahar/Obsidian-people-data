@@ -1,11 +1,14 @@
-import { Platform } from "obsidian";
+import { Platform, Plugin } from "obsidian";
 import { getDefFileManager } from "./def-file-manager";
 import { getDefinitionPopover } from "../editor/definition-popover";
 import { getDefinitionModal } from "../editor/mobile/definition-modal";
+import { DEF_DECORATION_CLS } from "../editor/common";
+import { getSettings, PopoverDismissType, PopoverEventSettings } from "../settings";
 
 /**
- * Service for handling definition previews.
- * Replaces the global triggerDefPreview and closeDefPreview functions.
+ * Opens and closes person previews.
+ * One set of document listeners handles all decorated names (event delegation),
+ * so names need no inline handlers. Call attach() for each window document.
  */
 export class DefinitionPreviewService {
 	private static instance: DefinitionPreviewService | null = null;
@@ -19,8 +22,15 @@ export class DefinitionPreviewService {
 		return DefinitionPreviewService.instance;
 	}
 
+	// The plugin removes these listeners when it unloads
+	public attach(plugin: Plugin, doc: Document): void {
+		plugin.registerDomEvent(doc, "mouseover", evt => this.onMouseOver(evt));
+		plugin.registerDomEvent(doc, "mouseout", evt => this.onMouseOut(evt));
+		plugin.registerDomEvent(doc, "click", evt => this.onClick(evt));
+	}
+
 	/**
-	 * Trigger definition preview for an element.
+	 * Open the preview for a decorated name element.
 	 */
 	public triggerDefPreview(el: HTMLElement): void {
 		const word = el.getAttr('def');
@@ -30,47 +40,67 @@ export class DefinitionPreviewService {
 		if (!def) return;
 
 		if (Platform.isMobile) {
-			const defModal = getDefinitionModal();
-			defModal.open(def);
+			getDefinitionModal().open(def);
 			return;
 		}
-
-		const defPopover = getDefinitionPopover();
-		defPopover.openAtCoords(def, el.getBoundingClientRect());
+		getDefinitionPopover().openAtElement(def, el);
 	}
 
-	/**
-	 * Close definition preview.
-	 */
 	public closeDefPreview(): void {
 		if (Platform.isMobile) {
-			const defModal = getDefinitionModal();
-			defModal.modal.close();
+			getDefinitionModal().modal.close();
 			return;
 		}
-		
-		const defPopover = getDefinitionPopover();
-		defPopover.close();
+		getDefinitionPopover().close();
 	}
 
-	/**
-	 * Get the trigger function as a string for HTML attributes.
-	 */
-	public getTriggerFunctionString(): string {
-		return 'event.stopPropagation();window.peopleMetadataPlugin?.triggerDefPreview(this);';
+	private isHoverMode(): boolean {
+		return !Platform.isMobile && getSettings().popoverEvent !== PopoverEventSettings.Click;
 	}
 
-	/**
-	 * Get the close function as a string for HTML attributes.
-	 */
-	public getCloseFunctionString(): string {
-		return 'window.peopleMetadataPlugin?.closeDefPreview();';
+	private onMouseOver(evt: MouseEvent) {
+		if (!this.isHoverMode()) return;
+		const el = findDecoration(evt.target);
+		if (!el) return;
+		const popover = getDefinitionPopover();
+		if (popover.isOpenFor(el)) {
+			popover.cancelScheduledClose();
+			return;
+		}
+		this.triggerDefPreview(el);
 	}
 
-	/**
-	 * Clean up the service.
-	 */
+	private onMouseOut(evt: MouseEvent) {
+		if (!this.isHoverMode()) return;
+		if (getSettings().defPopoverConfig.popoverDismissEvent !== PopoverDismissType.MouseExit) return;
+		const el = findDecoration(evt.target);
+		if (!el) return;
+		// Moves between child nodes of the same name are not an exit
+		if (evt.relatedTarget && el.contains(evt.relatedTarget as Node)) return;
+		const popover = getDefinitionPopover();
+		if (popover.isOpenFor(el)) {
+			// The delay lets the mouse move into the popover
+			popover.scheduleClose();
+		}
+	}
+
+	private onClick(evt: MouseEvent) {
+		if (this.isHoverMode()) return;
+		const el = findDecoration(evt.target);
+		if (!el) return;
+		this.triggerDefPreview(el);
+	}
+
 	public static cleanup(): void {
 		DefinitionPreviewService.instance = null;
 	}
+}
+
+// Does not use instanceof, because popout windows have their own Element class
+function findDecoration(target: EventTarget | null): HTMLElement | null {
+	const el = target as HTMLElement | null;
+	if (!el || typeof el.closest !== "function") {
+		return null;
+	}
+	return el.closest<HTMLElement>(`.${DEF_DECORATION_CLS}`);
 }

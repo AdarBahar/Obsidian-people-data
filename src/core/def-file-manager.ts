@@ -1,8 +1,9 @@
 import { App, TFile, TFolder } from "obsidian";
 import { PTreeNode } from "src/editor/prefix-tree";
 import { DEFAULT_DEF_FOLDER } from "src/settings";
-import { normaliseWord } from "src/util/editor";
+import { normaliseWord } from "src/util/text";
 import { logWarn } from "src/util/log";
+import { isPathInFolder } from "src/util/paths";
 import { useRetry } from "src/util/retry";
 import { FileParser } from "./file-parser";
 import { DefFileType } from "./file-type";
@@ -31,6 +32,9 @@ export class DefManager {
 
 	localDefs: DefinitionRepo;
 
+	// Called after the set of people changes
+	private changeListeners: (() => void)[] = [];
+
 	constructor(app: App) {
 		this.app = app;
 		this.globalDefs = new DefinitionRepo();
@@ -43,11 +47,6 @@ export class DefManager {
 		this.resetLocalConfigs()
 		this.lastUpdate = 0;
 		this.markedDirty = [];
-
-		// Set the global definitions in the context
-		if (PluginContext.isInitialized()) {
-			PluginContext.getInstance().definitions.global = this.globalDefs;
-		}
 
 		this.loadDefinitions();
 	}
@@ -174,13 +173,51 @@ export class DefManager {
 	}
 
 	isDefFile(file: TFile): boolean {
-		return file.path.startsWith(this.getGlobalDefFolder())
+		return this.isDefPath(file.path);
+	}
+
+	isDefPath(path: string): boolean {
+		return isPathInFolder(path, this.getGlobalDefFolder());
+	}
+
+	onChange(listener: () => void) {
+		this.changeListeners.push(listener);
+	}
+
+	private notifyChange() {
+		this.changeListeners.forEach(listener => listener());
 	}
 
 	reset() {
 		this.globalPrefixTree = new PTreeNode();
 		this.globalDefs.clear();
 		this.globalDefFiles = new Map<string, TFile>();
+		this.globalDefFolders = new Map<string, TFolder>();
+		this.consolidatedDefFiles = new Map<string, TFile>();
+		this.markedDirty = [];
+	}
+
+	// Forget the people of a file that was deleted or moved out of the people folder
+	removeFile(path: string) {
+		const known = this.globalDefFiles.delete(path);
+		this.consolidatedDefFiles.delete(path);
+		this.globalDefs.removeFile(path);
+		this.markedDirty = this.markedDirty.filter(file => file.path !== path);
+		if (known) {
+			this.buildPrefixTree();
+			this.updateActiveFile();
+			this.notifyChange();
+		}
+	}
+
+	// Follow a rename or move of a file
+	async renameFile(file: TFile, oldPath: string) {
+		this.removeFile(oldPath);
+		if (this.isDefFile(file) && file.extension === "md") {
+			this.addDefFile(file);
+			this.markDirty(file);
+			await this.loadUpdatedFiles();
+		}
 	}
 
 	// Load all people from registered people folder
@@ -190,6 +227,7 @@ export class DefManager {
 		this.reset();
 		await this.loadGlobals();
 		this.updateActiveFile();
+		this.notifyChange();
 	}
 
 	private getDefRepo() {
@@ -198,11 +236,6 @@ export class DefManager {
 
 	get(key: string) {
 		return this.getDefRepo().get(normaliseWord(key));
-	}
-
-	getPersonCompany(key: string): string | undefined {
-		const person = this.get(key);
-		return person?.companyName;
 	}
 
 	set(metadata: PersonMetadata) {
@@ -221,33 +254,32 @@ export class DefManager {
 		return [...this.globalDefFolders.values()];
 	}
 
+	// Parse only the files that changed since the last load
 	async loadUpdatedFiles() {
-		const definitions: PersonMetadata[] = [];
-		const dirtyFiles: string[] = [];
-
-		const files = [...this.globalDefFiles.values(), ...this.markedDirty];
-
-		for (let file of files) {
+		const dirty = new Map<string, TFile>();
+		this.markedDirty.forEach(file => dirty.set(file.path, file));
+		this.globalDefFiles.forEach(file => {
 			if (file.stat.mtime > this.lastUpdate) {
-				dirtyFiles.push(file.path);
-				const defs = await this.parseFile(file);
-				definitions.push(...defs);
+				dirty.set(file.path, file);
 			}
-		}
-
-		dirtyFiles.forEach(file => {
-			this.globalDefs.clearForFile(file);
 		});
+		this.markedDirty = [];
+		if (dirty.size === 0) {
+			return;
+		}
+		// Take the time before parsing, so changes during the parse are not missed
+		this.lastUpdate = Date.now();
 
-		if (definitions.length > 0) {
-			definitions.forEach(def => {
-				this.globalDefs.set(def);
-			});
+		for (const file of dirty.values()) {
+			const defs = await this.parseFile(file);
+			// Keep the slot of the file in the map: the first file wins for duplicate names
+			this.globalDefs.clearFile(file.path);
+			defs.forEach(def => this.globalDefs.set(def));
 		}
 
-		this.markedDirty = [];
 		this.buildPrefixTree();
-		this.lastUpdate = Date.now();
+		this.updateActiveFile();
+		this.notifyChange();
 	}
 
 	// Global configs should always be used by default
@@ -294,12 +326,12 @@ export class DefManager {
 	private async parseFolder(folder: TFolder): Promise<PersonMetadata[]> {
 		this.globalDefFolders.set(folder.path, folder);
 		const definitions: PersonMetadata[] = [];
-		for (let f of folder.children) {
+		for (const f of folder.children) {
 			if (f instanceof TFolder) {
-				let defs = await this.parseFolder(f);
+				const defs = await this.parseFolder(f);
 				definitions.push(...defs);
-			} else if (f instanceof TFile) {
-				let defs = await this.parseFile(f);
+			} else if (f instanceof TFile && f.extension === "md") {
+				const defs = await this.parseFile(f);
 				definitions.push(...defs);
 			}
 		}
@@ -308,7 +340,7 @@ export class DefManager {
 
 	private async parseFile(file: TFile): Promise<PersonMetadata[]> {
 		this.globalDefFiles.set(file.path, file);
-		let parser = new FileParser(this.app, file);
+		const parser = new FileParser(this.app, file);
 		const metadata = await parser.parseFile();
 		if (parser.defFileType === DefFileType.Consolidated) {
 			this.consolidatedDefFiles.set(file.path, file);
@@ -338,7 +370,7 @@ export class DefinitionRepo {
 	}
 
 	get(key: string) {
-		for (let [_, defMap] of this.fileDefMap) {
+		for (const defMap of this.fileDefMap.values()) {
 			const def = defMap.get(key);
 			if (def) {
 				return def;
@@ -348,7 +380,7 @@ export class DefinitionRepo {
 
 	getAllKeys(): string[] {
 		const keys: string[] = [];
-		this.fileDefMap.forEach((defMap, _) => {
+		this.fileDefMap.forEach(defMap => {
 			keys.push(...defMap.keys());
 		})
 		return keys;
@@ -369,11 +401,13 @@ export class DefinitionRepo {
 		defMap.set(normalizedKey, metadata);
 	}
 
-	clearForFile(filePath: string) {
-		const defMap = this.fileDefMap.get(filePath);
-		if (defMap) {
-			defMap.clear();
-		}
+	// Remove the people of a file, but keep its position in the file order
+	clearFile(filePath: string) {
+		this.fileDefMap.get(filePath)?.clear();
+	}
+
+	removeFile(filePath: string) {
+		this.fileDefMap.delete(filePath);
 	}
 
 	clear() {

@@ -2,17 +2,16 @@
 	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border-hover);
 	border-radius: var(--radius-m);
-	position: absolute;
+	position: fixed;
+	z-index: var(--layer-popover);
 	padding: var(--size-4-2) var(--size-4-3);
 	box-shadow: var(--shadow-s);
 	min-height: 100px;
-	min-width: 500px;
+	/* The script sets max-width and max-height from the settings and the viewport */
+	width: max-content;
+	min-width: min(280px, calc(100vw - 16px));
 	max-width: 600px;
 	overflow: auto;
-}
-
-.people-metadata-definition-popover.is-hidden {
-	visibility: hidden;
 }
 
 .people-metadata-definition-popover.has-custom-background {

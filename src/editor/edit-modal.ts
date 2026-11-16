@@ -1,15 +1,11 @@
-import { App, Modal } from "obsidian";
+import { App, Modal, Notice } from "obsidian";
 import { DefFileUpdater } from "src/core/def-file-updater";
-import { DefFileType } from "src/core/file-type";
-import { TFile } from "obsidian";
 import { PersonMetadata } from "src/core/model";
 
 
 export class EditDefinitionModal {
 	app: App;
 	modal: Modal;
-	aliases: string;
-	definition: string;
 	submitting: boolean;
 
 	constructor(app: App) {
@@ -19,34 +15,57 @@ export class EditDefinitionModal {
 
 	open(def: PersonMetadata) {
 		this.submitting = false;
-		this.modal.setTitle(`Edit metadata for '${def.fullName}'`);
-		const aliasText = this.modal.contentEl.createEl('input', { type: 'text', value: def.department });
-		const defText = this.modal.contentEl.createEl('textarea', { text: def.notes });
-		const button = this.modal.contentEl.createEl("button", {
+		const contentEl = this.modal.contentEl;
+		contentEl.empty();
+		this.modal.setTitle(`Edit '${def.fullName}'`);
+
+		const fullNameText = this.addField("Full name", "people-metadata-edit-modal-aliases", def.fullName);
+		const positionText = this.addField("Job title", "people-metadata-edit-modal-aliases", def.position);
+		const departmentText = this.addField("Department", "people-metadata-edit-modal-aliases", def.department);
+		const notesText = this.addField("Description", "people-metadata-edit-modal-textarea", def.notes);
+
+		const button = contentEl.createEl("button", {
 			text: "Save",
 			cls: 'people-metadata-edit-modal-save-button',
 		});
-		button.addEventListener('click', () => {
+		button.addEventListener('click', async () => {
 			if (this.submitting) {
 				return;
 			}
-			const updater = new DefFileUpdater(this.app);
-			const file = this.app.vault.getAbstractFileByPath('path/to/file.md');
-			if (!file || !(file instanceof TFile)) {
-				throw new Error('File not found or is not a valid TFile');
+			const fullName = fullNameText.value.trim();
+			if (!fullName) {
+				new Notice("Please enter a full name");
+				return;
 			}
-			updater.updateMetadata({
-				fullName: 'Jane Smith',
-				position: 'Manager',
-				department: 'Management',
-				notes: 'Notes about Jane Smith.',
-				fileType: DefFileType.Consolidated,
-				file: file,
-				linkText: 'Jane Smith'
-			});
-			this.modal.close();
+
+			this.submitting = true;
+			try {
+				const updater = new DefFileUpdater(this.app);
+				const saved = await updater.updateMetadata(def, {
+					...def,
+					fullName: fullName,
+					position: positionText.value.trim(),
+					department: departmentText.value.trim(),
+					notes: notesText.value.trim(),
+				});
+				if (saved) {
+					this.modal.close();
+				}
+			} finally {
+				this.submitting = false;
+			}
 		});
 
 		this.modal.open();
+	}
+
+	private addField(label: string, cls: string, value: string): HTMLTextAreaElement {
+		this.modal.contentEl.createDiv({
+			cls: "people-metadata-edit-modal-section-header",
+			text: label,
+		});
+		const field = this.modal.contentEl.createEl("textarea", { cls: cls });
+		field.value = value ?? "";
+		return field;
 	}
 }

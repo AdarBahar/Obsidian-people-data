@@ -1,32 +1,34 @@
 import { Editor } from "obsidian";
-import { getMarkedPhrases } from "src/editor/decoration";
+import { EditorView } from "@codemirror/view";
+import { definitionMarker, PhraseInfo } from "src/editor/decoration";
+import { normaliseWord } from "./text";
 
+export { normaliseWord };
+
+// Returns the marked name under the cursor of this editor, or an empty string.
+// Each editor has its own list of marked names, so split panes do not mix.
 export function getMarkedWordUnderCursor(editor: Editor) {
-	const currWord = getWordByOffset(editor.posToOffset(editor.getCursor()));
+	// @ts-expect-error, cm is not in the public API
+	const view = editor.cm as EditorView | undefined;
+	const phrases = view?.plugin(definitionMarker)?.markedPhrases ?? [];
+	const currWord = getWordByOffset(phrases, editor.posToOffset(editor.getCursor()));
 	return normaliseWord(currWord);
 }
 
-export function normaliseWord(word: string) {
-	return word.trimStart().trimEnd().toLowerCase();
-}
-
-function getWordByOffset(offset: number): string {
-	const markedPhrases = getMarkedPhrases();
+// Binary search over phrases sorted by position
+function getWordByOffset(markedPhrases: PhraseInfo[], offset: number): string {
 	let start = 0;
 	let end = markedPhrases.length - 1;
 
-	// Binary search to get marked word at provided position
 	while (start <= end) {
-		let mid = Math.floor((start + end) / 2);
-
-		let currPhrase = markedPhrases[mid];
+		const mid = Math.floor((start + end) / 2);
+		const currPhrase = markedPhrases[mid];
 		if (offset >= currPhrase.from && offset <= currPhrase.to) {
 			return currPhrase.phrase;
 		}
 		if (offset < currPhrase.from) {
 			end = mid - 1;
-		}
-		if (offset > currPhrase.to) {
+		} else {
 			start = mid + 1;
 		}
 	}

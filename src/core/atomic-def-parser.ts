@@ -3,67 +3,51 @@ import { App, TFile } from "obsidian";
 import { PersonMetadata } from "./model";
 import { DefFileType } from "./file-type";
 import { parseColorValue } from "./company-colors";
+import { parseFileHeader, splitLines } from "./file-header";
 
 
 export class AtomicDefParser extends BaseDefParser {
 	app: App;
 	file: TFile;
+	companyColor: string;
 
 	constructor(app: App, file: TFile) {
 		super();
 
 		this.app = app;
 		this.file = file;
+		this.companyColor = "";
 	}
 
 	async parseFile(fileContent?: string): Promise<PersonMetadata[]> {
-		if (!fileContent) {
+		if (fileContent === undefined) {
 			fileContent = await this.app.vault.cachedRead(this.file);
 		}
 
-		const fileMetadata = this.app.metadataCache.getFileCache(this.file);
-
 		// Read company color from frontmatter (properties)
-		let companyColor = "";
-		if (fileMetadata?.frontmatter?.color) {
-			// Handle different color formats from frontmatter
-			const colorValue = fileMetadata.frontmatter.color;
-			if (typeof colorValue === 'string') {
-				companyColor = parseColorValue(colorValue);
-			}
+		const fileMetadata = this.app.metadataCache.getFileCache(this.file);
+		const colorValue = fileMetadata?.frontmatter?.color;
+		if (typeof colorValue === 'string') {
+			this.companyColor = parseColorValue(colorValue);
 		}
 
-		const fmPos = fileMetadata?.frontmatterPosition;
-		if (fmPos) {
-			fileContent = fileContent.slice(fmPos.end.offset+1);
-		}
+		return this.parseContent(fileContent);
+	}
 
-		const lines = fileContent.split(/\r?\n/);
+	// Parse the full file text (frontmatter and logo included).
+	// Synchronous, so it can run inside vault.process().
+	parseContent(fileContent: string): PersonMetadata[] {
+		const lines = splitLines(fileContent);
+		const header = parseFileHeader(lines);
+
 		let fullName = "";
 		let position = "";
 		let department = "";
 		let notes = "";
-		let companyLogo = "";
 
-		// Extract company name from file name (without .md extension)
-		const companyName = this.file.basename;
-
-		// Check if first non-empty line is a logo (image)
-		let startIndex = 0;
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i].trim();
-			if (line) {
-				if (line.match(/!\[.*\]\(.*\)/)) {
-					companyLogo = line;
-					startIndex = i + 1;
-				}
-				break;
-			}
-		}
-
-		for (let i = startIndex; i < lines.length; i++) {
+		for (let i = header.bodyStart; i < lines.length; i++) {
 			const line = lines[i];
-			if (line.startsWith("# ") && !line.startsWith("Position: ") && !line.startsWith("Department: ")) {
+			if (line.startsWith("# ")) {
 				fullName = line.replace("# ", "").trim();
 			} else if (line.startsWith("Position: ")) {
 				position = line.replace("Position: ", "").trim();
@@ -82,13 +66,16 @@ export class AtomicDefParser extends BaseDefParser {
 			file: this.file,
 			linkText: `${this.file.path}`,
 			fileType: DefFileType.Atomic,
-			companyName,
-			companyLogo,
-			companyColor,
+			filePosition: {
+				from: header.bodyStart,
+				to: lines.length - 1,
+			},
+			// Extract company name from file name (without .md extension)
+			companyName: this.file.basename,
+			companyLogo: header.logo,
+			companyColor: this.companyColor,
 		};
 
 		return [personMetadata];
 	}
-
-
 }

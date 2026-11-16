@@ -1,371 +1,217 @@
-import { App, Component, MarkdownRenderer, MarkdownView, normalizePath, Plugin } from "obsidian";
+import { App, Component, Editor, Plugin } from "obsidian";
 import { PersonMetadata } from "src/core/model";
-// import { Definition } from "src/core/model"; // Removed as it's no longer used
 import { getSettings, PopoverDismissType } from "src/settings";
 import { logError } from "src/util/log";
+import { renderPersonCard } from "./person-card";
 
-const DEF_POPOVER_ID = "definition-popover";
+export const POPOVER_CLS = "people-metadata-definition-popover";
+// Time to move the mouse from a name into the popover before it closes
+const MOUSE_EXIT_CLOSE_DELAY = 300;
+const VIEWPORT_MARGIN = 8;
+
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock", "Fn", "OS"]);
+
+// A key closes the popover, but a lone modifier key or a shortcut does not.
+// Thus Cmd+C and Ctrl+C can copy the text in the popover.
+export function isDismissKey(evt: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey">): boolean {
+	if (MODIFIER_KEYS.has(evt.key)) {
+		return false;
+	}
+	return !(evt.metaKey || evt.ctrlKey);
+}
 
 let definitionPopover: DefinitionPopover;
 
-interface Coordinates {
+export interface Coordinates {
 	left: number;
 	right: number;
 	top: number;
 	bottom: number;
 }
 
-export class DefinitionPopover extends Component {
-	app: App
+// The popover is placed on the body of the document that holds the name,
+// with fixed position in viewport coordinates. This works in all panes and in popout windows.
+export class DefinitionPopover {
+	app: App;
 	plugin: Plugin;
-	// Code mirror editor object for capturing vim events
-	cmEditor: unknown;
-	// Ref to the currently mounted popover
-	// There should only be one mounted popover at all times
+	// There is only one mounted popover at a time
 	mountedPopover: HTMLElement | undefined;
+	// The element that opened the popover (a decorated name), if any
+	anchorEl: HTMLElement | undefined;
+
+	private renderComponent: Component | undefined;
+	private closeTimer: number | undefined;
+	private removeListeners: (() => void)[] = [];
 
 	constructor(plugin: Plugin) {
-		super();
 		this.app = plugin.app;
 		this.plugin = plugin;
-		this.cmEditor = this.getCmEditor(this.app);
 	}
 
-	// Open at editor cursor's position
-	openAtCursor(person: PersonMetadata) {
-		this.unmount();
-		this.mountAtCursor(person);
-
-		if (!this.mountedPopover) {
-			logError("Mounting person popover failed");
-			return
-		}
-
-		this.registerClosePopoverListeners();
+	// Open below or above a decorated name
+	openAtElement(person: PersonMetadata, anchorEl: HTMLElement) {
+		this.open(person, anchorEl.getBoundingClientRect(), anchorEl.doc, anchorEl);
 	}
 
-	// Open at coordinates (can use for opening at mouse position)
-	openAtCoords(person: PersonMetadata, coords: Coordinates) {
-		this.unmount();
-		this.mountAtCoordinates(person, coords);
-
-		if (!this.mountedPopover) {
-			logError("mounting person popover failed");
-			return
+	// Open at the cursor of an editor
+	openAtCursor(person: PersonMetadata, editor: Editor) {
+		// @ts-expect-error, cm is not in the public API
+		const cm = editor.cm;
+		const coords = cm?.coordsAtPos?.(editor.posToOffset(editor.getCursor()), -1) as Coordinates | null;
+		if (!coords) {
+			logError("Could not open person popover: no cursor coordinates");
+			return;
 		}
-		this.registerClosePopoverListeners();
+		const doc: Document = cm?.dom?.doc ?? activeDocument;
+		this.open(person, coords, doc);
 	}
 
-	cleanUp() {
-		const popoverEls = document.getElementsByClassName(DEF_POPOVER_ID);
-		for (let i = 0; i < popoverEls.length; i++) {
-			popoverEls[i].remove();
-		}
+	isOpenFor(el: HTMLElement): boolean {
+		return !!this.mountedPopover && this.anchorEl === el;
 	}
 
 	close = () => {
+		this.cancelScheduledClose();
 		this.unmount();
 	}
 
-	clickClose = () => {
-		if (this.mountedPopover?.matches(":hover")) {
+	scheduleClose(delay = MOUSE_EXIT_CLOSE_DELAY) {
+		if (!this.mountedPopover) {
 			return;
 		}
+		this.cancelScheduledClose();
+		this.closeTimer = window.setTimeout(() => this.close(), delay);
+	}
+
+	cancelScheduledClose() {
+		if (this.closeTimer !== undefined) {
+			window.clearTimeout(this.closeTimer);
+			this.closeTimer = undefined;
+		}
+	}
+
+	cleanUp() {
 		this.close();
 	}
 
-	private getCmEditor(app: App) {
-		const activeView = app.workspace.getActiveViewOfType(MarkdownView);
-		if (!activeView) {
-			return null;
-		}
-
-		// Access the CodeMirror editor through the view's editor property
-		// This is a safer way to access the internal editor without casting to any
-		const editor = activeView.editor;
-		if (!editor) {
-			return null;
-		}
-
-		// Try to access the CodeMirror instance through the editor
-		// @ts-ignore - This is accessing internal Obsidian API
-		const cmEditor = editor.cm;
-		return cmEditor || null;
-	}
-
-	private shouldOpenToLeft(horizontalOffset: number, containerStyle: CSSStyleDeclaration): boolean {
-		return horizontalOffset > parseInt(containerStyle.width) / 2;
-	}
-
-	private shouldOpenUpwards(verticalOffset: number, containerStyle: CSSStyleDeclaration): boolean {
-		return verticalOffset > parseInt(containerStyle.height) / 2;
-	}
-
-	// Creates popover element and its children, without displaying it
-	private createElement(person: PersonMetadata, parent: HTMLElement): HTMLDivElement {
+	private open(person: PersonMetadata, coords: Coordinates, doc: Document, anchorEl?: HTMLElement) {
+		this.close();
 		const popoverSettings = getSettings().defPopoverConfig;
 
-		// Build CSS classes
-		let cssClasses = "people-metadata-definition-popover is-hidden";
+		const el = doc.body.createDiv({ cls: POPOVER_CLS });
 		if (popoverSettings.backgroundColour) {
-			cssClasses += " has-custom-background";
-		}
-
-		const el = parent.createDiv({
-			cls: cssClasses,
-			attr: {
-				id: DEF_POPOVER_ID,
-			},
-		});
-
-		// Set custom background color as CSS variable if provided
-		if (popoverSettings.backgroundColour) {
+			el.addClass("has-custom-background");
 			el.style.setProperty('--custom-popover-background', popoverSettings.backgroundColour);
 		}
 
-		// Create header with person name and company info
-		const headerEl = el.createDiv({ cls: "people-metadata-popover-header" });
-		const personNameEl = headerEl.createEl("h2", {
-			cls: "people-metadata-person-name",
-			text: person.fullName
+		this.renderComponent = new Component();
+		this.renderComponent.load();
+		renderPersonCard(this.app, person, el, this.renderComponent, {
+			headingTag: "h2",
+			showFileName: popoverSettings.displayDefFileName,
 		});
+		this.postprocessLinks(el, person);
 
-		// Company info on the right side of header
-		if (person.companyName || person.companyLogo) {
-			const companyEl = headerEl.createDiv({ cls: "people-metadata-company-info" });
-			if (person.companyLogo) {
-				const logoEl = companyEl.createDiv({ cls: "people-metadata-company-logo" });
-				this.renderCompanyLogoWithFallback(person.companyLogo, logoEl, person);
-			}
-			if (person.companyName) {
-				companyEl.createDiv({ text: person.companyName, cls: "people-metadata-company-name" });
-			}
-		}
-
-		// Add filename display if enabled
-		if (popoverSettings.displayDefFileName) {
-			const filenameEl = el.createDiv({
-				text: person.file.basename,
-				cls: "people-metadata-definition-popover-filename"
-			});
-		}
-
-		// Person details (removed company field)
-		const detailsEl = el.createDiv({ cls: "people-metadata-person-details" });
-		if (person.position) {
-			detailsEl.createDiv({ text: `Position: ${person.position}` });
-		}
-		if (person.department) {
-			detailsEl.createDiv({ text: `Department: ${person.department}` });
-		}
-
-		// Notes content
-		const contentEl = el.createDiv({ cls: "people-metadata-person-notes" });
-		contentEl.setAttr("ctx", "person-popup");
-
-		const currComponent = this;
-		MarkdownRenderer.render(this.app, person.notes, contentEl, 
-			normalizePath(person.file.path), currComponent);
-		this.postprocessMarkdown(contentEl, person);
-
-		return el;
+		this.mountedPopover = el;
+		this.anchorEl = anchorEl;
+		this.position(el, coords, doc);
+		this.registerCloseListeners(el, doc, anchorEl);
 	}
 
-	private renderCompanyLogoWithFallback(logoMarkdown: string, logoEl: HTMLElement, person: PersonMetadata) {
-		// First try to render the original logo
-		MarkdownRenderer.render(this.app, logoMarkdown, logoEl,
-			normalizePath(person.file.path), this);
-
-		// Set up error handling for failed images
-		window.setTimeout(() => {
-			const imgElements = logoEl.querySelectorAll('img');
-			imgElements.forEach(img => {
-				// Check if image failed to load or is broken
-				if (!img.complete || img.naturalHeight === 0) {
-					this.showDefaultLogo(logoEl, person.companyName);
-				} else {
-					// Set up error handler for future load failures
-					img.onerror = () => {
-						this.showDefaultLogo(logoEl, person.companyName);
-					};
-				}
-			});
-		}, 100); // Small delay to allow image loading attempt
-	}
-
-	private showDefaultLogo(logoEl: HTMLElement, companyName?: string) {
-		// Clear existing content
-		logoEl.empty();
-
-		// Create default logo element
-		const defaultLogo = logoEl.createDiv({
-			cls: "people-metadata-company-logo-default",
-			text: companyName ? companyName.substring(0, 2).toUpperCase() : "CO"
-		});
-
-		// Add title attribute for accessibility
-		defaultLogo.title = companyName ? `${companyName} (default logo)` : "Company (default logo)";
-	}
-
-	// Internal links do not work properly in the popover
-	// This is to manually open internal links
-	private postprocessMarkdown(el: HTMLDivElement, person: PersonMetadata) {
-		const internalLinks = el.getElementsByClassName("internal-link");
-		for (let i = 0; i < internalLinks.length; i++) {
-			const linkEl = internalLinks.item(i);
-			if (linkEl) {
-				linkEl.addEventListener('click', e => {
-					e.preventDefault();
-					const file = this.app.metadataCache.getFirstLinkpathDest(linkEl.getAttr("href") ?? '', 
-						normalizePath(person.file.path))
-					this.unmount();
-					if (!file) {
-						return;
-					}
-					this.app.workspace.getLeaf().openFile(file)
-				});
-			}
-		}
-	}
-
-	private mountAtCursor(person: PersonMetadata) {
-		let cursorCoords;
-		try {
-			cursorCoords = this.getCursorCoords();
-		} catch (e) {
-			logError("Could not open person popover - could not get cursor coordinates");
-			return
-		}
-
-		this.mountAtCoordinates(person, cursorCoords);
-	}
-
-	// Offset coordinates from viewport coordinates to coordinates relative to the parent container element
-	private offsetCoordsToContainer(coords: Coordinates, container: HTMLElement): Coordinates {
-		const containerRect = container.getBoundingClientRect();
-		return {
-			left: coords.left - containerRect.left,
-			right: coords.right - containerRect.left,
-			top: coords.top - containerRect.top,
-			bottom: coords.bottom - containerRect.top
-		}
-	}
-
-	private mountAtCoordinates(person: PersonMetadata, coords: Coordinates) {
-		const mdView = this.app.workspace.getActiveViewOfType(MarkdownView)
-		if (!mdView) {
-			logError("Could not mount popover: No active markdown view found");
-			return;
-		}
-
-		this.mountedPopover = this.createElement(person, mdView.containerEl);
-		this.positionAndSizePopover(mdView, coords);
-	}
-
-	// Position and display popover
-	private positionAndSizePopover(mdView: MarkdownView, coords: Coordinates) {
-		if (!this.mountedPopover) {
-			return;
-		}
+	private position(el: HTMLElement, coords: Coordinates, doc: Document) {
 		const popoverSettings = getSettings().defPopoverConfig;
-		const containerStyle = getComputedStyle(mdView.containerEl);
-		const matchedClasses = mdView.containerEl.getElementsByClassName("view-header");
-		// The container div has a header element that needs to be accounted for
-		let offsetHeaderHeight = 0;
-		if (matchedClasses.length > 0) {
-			offsetHeaderHeight = parseInt(getComputedStyle(matchedClasses[0]).height);
-		}
+		const win = doc.defaultView ?? window;
+		const viewportWidth = win.innerWidth;
+		const viewportHeight = win.innerHeight;
+		const custom = popoverSettings.enableCustomSize;
 
-		// Offset coordinates to be relative to container
-		coords = this.offsetCoordsToContainer(coords, mdView.containerEl);
+		const style: Partial<CSSStyleDeclaration> = {};
+		style.maxWidth = custom && popoverSettings.maxWidth ?
+			`${popoverSettings.maxWidth}px` :
+			`${Math.min(600, Math.max(280, viewportWidth / 2 - VIEWPORT_MARGIN))}px`;
 
-		// Remove the hidden class to make the popover visible
-		this.mountedPopover.removeClass('is-hidden');
-
-		const positionStyle: Partial<CSSStyleDeclaration> = {};
-
-		positionStyle.maxWidth = popoverSettings.enableCustomSize && popoverSettings.maxWidth ?
-			`${popoverSettings.maxWidth}px` : `${parseInt(containerStyle.width) / 2}px`;
-		if (this.shouldOpenToLeft(coords.left, containerStyle)) {
-			positionStyle.right = `${parseInt(containerStyle.width) - coords.right}px`;
+		if (coords.left > viewportWidth / 2) {
+			style.right = `${Math.max(VIEWPORT_MARGIN, viewportWidth - coords.right)}px`;
 		} else {
-			positionStyle.left = `${coords.left}px`;
+			style.left = `${Math.max(VIEWPORT_MARGIN, coords.left)}px`;
 		}
 
-		if (this.shouldOpenUpwards(coords.top, containerStyle)) {
-			positionStyle.bottom = `${parseInt(containerStyle.height) - coords.top}px`;
-			positionStyle.maxHeight = popoverSettings.enableCustomSize && popoverSettings.maxHeight ?
-				`${popoverSettings.maxHeight}px` : `${coords.top - offsetHeaderHeight}px`;
+		if (coords.top > viewportHeight / 2) {
+			style.bottom = `${viewportHeight - coords.top}px`;
+			style.maxHeight = custom && popoverSettings.maxHeight ?
+				`${popoverSettings.maxHeight}px` : `${coords.top - VIEWPORT_MARGIN}px`;
 		} else {
-			positionStyle.top = `${coords.bottom}px`;
-			positionStyle.maxHeight = popoverSettings.enableCustomSize && popoverSettings.maxHeight ?
-				`${popoverSettings.maxHeight}px` : `${parseInt(containerStyle.height) - coords.bottom}px`;
+			style.top = `${coords.bottom}px`;
+			style.maxHeight = custom && popoverSettings.maxHeight ?
+				`${popoverSettings.maxHeight}px` : `${viewportHeight - coords.bottom - VIEWPORT_MARGIN}px`;
 		}
 
-		this.mountedPopover.setCssStyles(positionStyle);
+		el.setCssStyles(style);
+	}
+
+	private registerCloseListeners(el: HTMLElement, doc: Document, anchorEl?: HTMLElement) {
+		const listen = <K extends keyof DocumentEventMap>(type: K, fn: (evt: DocumentEventMap[K]) => void) => {
+			doc.addEventListener(type, fn, true);
+			this.removeListeners.push(() => doc.removeEventListener(type, fn, true));
+		};
+		// No instanceof checks: popout windows have their own Node class
+		const isInside = (target: EventTarget | null) =>
+			!!target && (el.contains(target as Node) || !!anchorEl?.contains(target as Node));
+
+		listen("keydown", evt => {
+			// Keys inside the popover (for example Tab between links) keep it open. Escape always closes it.
+			const inPopover = !!evt.target && el.contains(evt.target as Node);
+			if (evt.key === "Escape" || (!inPopover && isDismissKey(evt))) {
+				this.close();
+			}
+		});
+		listen("mousedown", evt => {
+			if (!isInside(evt.target)) {
+				this.close();
+			}
+		});
+		listen("scroll", evt => {
+			// Scroll inside the popover is allowed
+			if (!(evt.target && el.contains(evt.target as Node))) {
+				this.close();
+			}
+		});
+
+		const onEnter = () => this.cancelScheduledClose();
+		const onLeave = () => {
+			if (getSettings().defPopoverConfig.popoverDismissEvent === PopoverDismissType.MouseExit) {
+				this.scheduleClose();
+			}
+		};
+		el.addEventListener("mouseenter", onEnter);
+		el.addEventListener("mouseleave", onLeave);
+	}
+
+	// Internal links do not work in the popover without this
+	private postprocessLinks(el: HTMLElement, person: PersonMetadata) {
+		el.addEventListener("click", evt => {
+			const linkEl = (evt.target as HTMLElement | null)?.closest?.("a.internal-link");
+			if (!linkEl) {
+				return;
+			}
+			evt.preventDefault();
+			const href = linkEl.getAttr("href") ?? "";
+			this.close();
+			this.app.workspace.openLinkText(href, person.file.path);
+		});
 	}
 
 	private unmount() {
-		if (!this.mountedPopover) {
-			return
-		}
-		this.mountedPopover.remove();
+		this.removeListeners.forEach(remove => remove());
+		this.removeListeners = [];
+		this.renderComponent?.unload();
+		this.renderComponent = undefined;
+		this.mountedPopover?.remove();
 		this.mountedPopover = undefined;
-
-		this.unregisterClosePopoverListeners();
-	}
-
-	// This uses internal non-exposed codemirror API to get cursor coordinates
-	// Cursor coordinates seem to be relative to viewport
-	private getCursorCoords(): Coordinates {
-		const editor = this.app.workspace.activeEditor?.editor;
-		// @ts-ignore
-		return editor?.cm?.coordsAtPos(editor?.posToOffset(editor?.getCursor()), -1);
-	}
-
-	private registerClosePopoverListeners() {
-		this.getActiveView()?.containerEl.addEventListener("keypress", this.close);
-		this.getActiveView()?.containerEl.addEventListener("click", this.clickClose);
-		
-		if (this.cmEditor && typeof this.cmEditor === 'object' && this.cmEditor !== null && 'on' in this.cmEditor) {
-			(this.cmEditor as { on: (event: string, callback: () => void) => void }).on("vim-keypress", this.close);
-		}
-		const scroller = this.getCmScroller();
-		if (scroller) {
-			scroller.addEventListener("scroll", this.close);
-		}
-	}
-
-	private unregisterClosePopoverListeners() {
-		this.getActiveView()?.containerEl.removeEventListener("keypress", this.close);
-		this.getActiveView()?.containerEl.removeEventListener("click", this.clickClose);
-
-		if (this.cmEditor && typeof this.cmEditor === 'object' && this.cmEditor !== null && 'off' in this.cmEditor) {
-			(this.cmEditor as { off: (event: string, callback: () => void) => void }).off("vim-keypress", this.close);
-		}
-		const scroller = this.getCmScroller();
-		if (scroller) {
-			scroller.removeEventListener("scroll", this.close);
-		}
-	}
-
-	private getCmScroller() {
-		const scroller = document.getElementsByClassName("cm-scroller");
-		if (scroller.length > 0) {
-			return scroller[0];
-		}
-	}
-
-	getPopoverElement() {
-		return document.getElementById("definition-popover");
-	}
-
-	private getActiveView() {
-		return this.app.workspace.getActiveViewOfType(MarkdownView);
+		this.anchorEl = undefined;
 	}
 }
 
-// Mount definition popover
 export function initDefinitionPopover(plugin: Plugin) {
 	if (definitionPopover) {
 		definitionPopover.cleanUp();

@@ -2,7 +2,6 @@ import { App, DropdownComponent, Modal, Notice, Setting, TFile } from "obsidian"
 import { getDefFileManager } from "src/core/def-file-manager";
 import { DefFileUpdater } from "src/core/def-file-updater";
 import { DefFileType } from "src/core/file-type";
-import { registerDefFile } from "./def-file-registration";
 
 
 export class AddDefinitionModal {
@@ -122,8 +121,8 @@ export class AddDefinitionModal {
 					return;
 				}
 
-				const updated = new DefFileUpdater(this.app);
-				await updated.addMetadata({
+				const updater = new DefFileUpdater(this.app);
+				const added = await updater.addMetadata({
 					fullName: fullNameText.value.trim(),
 					position: jobTitleText.value.trim() || "",
 					department: departmentText.value.trim() || "",
@@ -132,7 +131,9 @@ export class AddDefinitionModal {
 					fileType: DefFileType.Consolidated
 				});
 
-				this.modal.close();
+				if (added) {
+					this.modal.close();
+				}
 			} catch (error) {
 				console.error("Error adding person:", error);
 				new Notice("Failed to add person. Please try again.");
@@ -172,10 +173,8 @@ color: "blue"
 
 `;
 
+		// The template already contains the def-type frontmatter
 		const file = await this.app.vault.create(finalPath, template);
-
-		// Register the file as a definition file
-		registerDefFile(this.app, file, DefFileType.Consolidated);
 
 		// Add to def manager
 		defManager.addDefFile(file);

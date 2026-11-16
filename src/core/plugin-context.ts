@@ -1,7 +1,6 @@
 import { App, Plugin } from "obsidian";
-import { Settings } from "../settings";
+import type { Settings } from "../settings";
 import { LogLevel } from "../util/log";
-import { DefinitionRepo } from "./def-file-manager";
 
 /**
  * Plugin context that replaces global variables with proper dependency injection.
@@ -14,18 +13,12 @@ export class PluginContext {
 	public readonly plugin: Plugin;
 	public settings: Settings;
 	public logLevel: LogLevel;
-	public definitions: {
-		global: DefinitionRepo;
-	};
 
 	private constructor(app: App, plugin: Plugin, settings: Settings) {
 		this.app = app;
 		this.plugin = plugin;
 		this.settings = settings;
 		this.logLevel = LogLevel.Error;
-		this.definitions = {
-			global: new DefinitionRepo(),
-		};
 	}
 
 	/**

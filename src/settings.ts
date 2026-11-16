@@ -45,6 +45,7 @@ export const DEFAULT_DEF_FOLDER = "people"
 
 export const DEFAULT_SETTINGS: Partial<Settings> = {
 	enableInReadingView: true,
+	defFolder: DEFAULT_DEF_FOLDER,
 	enableSpellcheck: true,
 	autoRegisterNewFiles: true,
 	popoverEvent: PopoverEventSettings.Hover,
@@ -62,6 +63,30 @@ export const DEFAULT_SETTINGS: Partial<Settings> = {
 		maxHeight: 150,
 		popoverDismissEvent: PopoverDismissType.Click,
 	}
+}
+
+// Merge saved data over the defaults.
+// Nested objects are copied, so later changes do not modify DEFAULT_SETTINGS,
+// and keys that were added after the data was saved get their default value.
+export function mergeSettings(data: Partial<Settings> | null | undefined): Settings {
+	const saved = data ?? {};
+	return {
+		...DEFAULT_SETTINGS,
+		...saved,
+		defFolder: saved.defFolder || DEFAULT_DEF_FOLDER,
+		defFileParseConfig: {
+			...DEFAULT_SETTINGS.defFileParseConfig,
+			...saved.defFileParseConfig,
+			divider: {
+				...DEFAULT_SETTINGS.defFileParseConfig?.divider,
+				...saved.defFileParseConfig?.divider,
+			},
+		},
+		defPopoverConfig: {
+			...DEFAULT_SETTINGS.defPopoverConfig,
+			...saved.defPopoverConfig,
+		},
+	} as Settings;
 }
 
 export class SettingsTab extends PluginSettingTab {
