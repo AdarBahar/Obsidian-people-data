@@ -1,325 +1,127 @@
 # Obsidian People Metadata
 
-Augment names in your Obsidian pages with company, position and details.
-A personal tool for managing and looking up people metadata within your notes. Create company profiles, add person details, and get instant previews with company colors and logos.
+I built People Metadata to make names in my Obsidian notes more useful. It shows people, companies, roles, and other details without leaving the note.
 
-> **Latest Update**: Major code quality improvements addressing Obsidian team feedback - enhanced performance, better API compliance, and improved architecture.
+![Person tooltip](./img/person-tooltip.png)
 
-![Person Tooltip Preview](./img/person-tooltip.png)
+## Key features
 
-## 🚀 Installation
+- **Details on hover.** Move the pointer over a name to see the person's details.
+- **People and companies.** Store people in plain Markdown files, grouped by company.
+- **Company colors and logos.** Each company can have a color and a logo. If a logo does not load, the plugin shows initials.
+- **Add a person form.** Add people through a form. You do not need to write the metadata by hand.
+- **Automatic setup.** The plugin creates the People folder when it is missing, and it adds a template to new files.
+- **Metadata context.** Limit a note to the metadata files that you choose.
+- **Desktop and mobile.** The plugin is not limited to desktop Obsidian.
 
-### From Obsidian Community Plugins (Recommended)
-1. Open Obsidian Settings
-2. Go to Community Plugins and disable Safe Mode
-3. Click Browse and search for "People Metadata"
-4. Install and enable the plugin
+## Installation
 
-### Manual Installation
-1. Download the latest release from [GitHub Releases](https://github.com/AdarBahar/Obsidian-people-data/releases)
-2. Extract the files to your vault's `.obsidian/plugins/people-metadata/` folder
-3. Enable the plugin in Obsidian Settings → Community Plugins
+The plugin is not yet in the Obsidian Community Plugins directory. Install it manually.
 
-## ✨ Features
+Requirements: Obsidian 1.5.12 or later.
 
-- **🏢 Company Management**: Organize people by company with custom colors and logos
-- **💬 Smart Tooltips**: Hover over names to see rich person details
-- **➕ Add Person Modal**: User-friendly interface for adding new people
-- **🔄 Auto-Registration**: Automatically set up new files in the People folder
-- **🖼️ Logo Fallback**: Graceful fallback for broken company logos
-- **📱 Mobile Support**: Works seamlessly on both desktop and mobile
-- **🎨 Color Coding**: Assign colors to companies for visual organization
-- **📝 Rich Formatting**: Support for markdown in person descriptions
+1. Open the [latest release](https://github.com/AdarBahar/Obsidian-people-data/releases/latest).
+2. Download `main.js`, `manifest.json`, and `styles.css`.
+3. In your vault, create the folder `.obsidian/plugins/people-metadata/`. Copy the three files into it.
+4. In Obsidian, open **Settings → Community plugins**. If the plugin list is locked, enable community plugins first.
+5. Enable **People Metadata** in the list of installed plugins.
 
-## 📖 Basic Usage
+## Quick example
 
-1. Choose the people folder. The default folder is `people`.
-   - If the folder does not exist when Obsidian starts, a notice shows a `Create folder` button.
-   - The `Add a Person` command also makes the folder if it is missing.
-   - To use a different folder, right-click on the folder in your file explorer, and select `Set as people folder`.
-2. Within the folder, create metadata files (with any name of your choice).
-3. Add a person metadata entry using the `Add a Person` command. This will display a user-friendly modal where you can input the person's details and choose which company they belong to.
-4. Once a person metadata entry is added, the person's name should be underlined in your notes. You may preview the metadata by hovering over the underlined name with the mouse, or triggering the `Preview person under cursor` command when your cursor is on the name.
+This example uses fictional people.
 
-### Editor menu
+1. Run the **Add a person** command.
+2. Enter the details. Set the full name to `Maya Lopez`, the job title to `Product Lead`, the department to `Operations`, and the description to `Owns the autumn launch plan.` In **Choose company**, select **Create a new company**.
+3. Select **Save**. The plugin creates `Lopez-Company.md` in the People folder, with Maya Lopez in it.
+4. In another note, type `Maya Lopez`. The plugin underlines the name.
+5. Move the pointer over the name. The preview shows the details of Maya Lopez.
 
-Options available:
-- Go to definition (jump to the entry of the person)
-- Add a Person (add a new person to an existing company or create a new company)
-- Edit definition (right-click on an underlined name)
+## How metadata works
 
-### Commands
+The plugin stores people in plain Markdown files in the People folder. Each file is a note in your vault. There are two file types:
 
-You may want to assign hotkeys to the commands available for easy access:
-- Add a Person
-- Preview person under cursor
-- Refresh people
+- **Consolidated:** one company, with many people. The file name is the company name.
+- **Atomic:** one person in each file.
 
-## How it works
+The `def-type` property sets the file type. This is a short consolidated file:
 
-**People Metadata** does not maintain any hidden metadata files for your people metadata. 
-All metadata entries are placed in your vault and form part of your notes.
-You will notice that added metadata entries will create entries within your selected metadata file. 
-You may edit these entries freely to add/edit your metadata, but if you do so, make sure to adhere strictly to the metadata rules below.
-**It is recommended that you read through the metadata rules first before manually editing the metadata files.**
-
-### Metadata rules
-
-Currently, there are two types of metadata files: `consolidated` and `atomic`.
-The type of metadata file is specified in the `def-type` frontmatter (or property) of a file.
-For all metadata files you create, the `def-type` frontmatter should be set to either 'consolidated' or 'atomic'.
-For compatibility reasons, a file is treated to be `consolidated` if the `def-type` frontmatter is not specified (but this is not guaranteed to remain the same in subsequent releases, so always specify the frontmatter when creating a new metadata file). 
-For convenience, use the commands provided to add the `def-type` frontmatter.
-
-#### Consolidated metadata file
-
-A `consolidated` file type refers to a file that can contain many metadata entries for people within the same company.
-Register a metadata file by specifying the `def-type: consolidated` frontmatter.
-
-A `consolidated` metadata file is parsed according to the following rules:
-
-1. The **file name** represents the **company name** (e.g., `TechCorp.md` represents TechCorp company).
-2. The **frontmatter** can optionally contain a company color setting using the `color` property. You can use either predefined color names (e.g., `color: "blue"`) or hex codes (e.g., `color: "#0066cc"`). This color will be used for the double underline decoration of all people in this company.
-3. The **first line** (after frontmatter) can optionally contain a company logo. Use the markdown image syntax (e.g., `![Company Logo](logo.png)`) or the embed syntax (e.g., `![[logo.png]]`). The line must contain only the image. If the logo image fails to load or is broken, a default logo will be displayed showing the first two letters of the company name.
-4. A metadata block consists of a **full name, job position, department, and notes**. They must be provided **strictly** in that order.
-5. A full name is denoted with a line in the following format `# <name>`. This is rendered as a markdown header in Obsidian. A `# <name>` line always starts a new person, also when the divider before it is missing. Use `##` or smaller headings inside notes.
-6. A job position is specified with a line starting with `Position: `.
-7. A department is specified with a line starting with `Department: `.
-8. A line that occurs after a registered **full name** and is not a position or department is deemed to be notes. Notes can be multi-line. All subsequent lines are notes until the metadata block divider or the next full name is encountered. You may write markdown here, which will be formatted similar to Obsidian's markdown formatting.
-9. A line with nothing but three hyphens `---` is used as a divider to separate metadata blocks. This is rendered as a delimiting line in Obsidian. (This divider can be configured in the settings to recognise three underscores `___` as well)
-
-Example metadata file (`TechCorp.md`):
-
-> ```
-> ---
-> def-type: consolidated
-> color: "blue"
-> ---
->
-> ![TechCorp Logo](logo.png)
->
-> # John Doe
-> Position: Developer
-> Department: Engineering
->
-> Notes about John Doe.
-> These notes can span several lines.
-> They will end when the divider is reached.
->
-> ---
->
-> # Jane Smith
-> Position: Manager
-> Department: Management
->
-> Notice that the last entry in the file does not need to have a divider, although it is still valid to have one.
-> ```
-
-### Available Color Names
-
-You can use predefined color names instead of hex codes:
-
-**Primary Colors:** `blue`, `red`, `green`, `orange`, `purple`, `teal`
-**Secondary Colors:** `navy`, `crimson`, `forest`, `amber`, `violet`, `cyan`
-**Muted Colors:** `slate`, `rose`, `lime`, `indigo`, `pink`, `brown`
-**Custom Colors:** `mint`, `coral`, `lavender`, `gold`, `silver`, `bronze`
-
-See [COMPANY_COLORS.md](documentation/COMPANY_COLORS.md) for the complete list with color previews.
-
-## Auto-Registration and Template Generation
-
-The plugin automatically handles new files in the People folder in two scenarios:
-
-### When Creating New Files
-When you create a new markdown file in the People folder, the plugin will automatically:
-1. **Add the required frontmatter** (`def-type: consolidated`)
-2. **Apply the "People" label** in the file explorer
-3. **Add a basic template** (if the file is empty)
-
-### When Opening Empty Files
-When you open an empty markdown file in the People folder, the plugin will automatically:
-1. **Detect that it's empty** and lacks People metadata
-2. **Add the complete template** with:
-   - Page properties (`def-type: consolidated`, `color: "blue"`)
-   - Company logo placeholder
-   - Example person entries with proper formatting
-   - Dividing lines between entries
-
-### Template Structure
-```yaml
+```markdown
 ---
 def-type: consolidated
 color: "blue"
 ---
 
-![Company Logo](logo.png)
+# Maya Lopez
+Position: Product Lead
+Department: Operations
 
-# Person Name
-Position: Job Title
-Department: Department Name
-
-Notes about this person go here.
-
----
-
-# Another Person
-Position: Another Job Title
-Department: Another Department
-
-Notes about the second person.
-
----
+Owns the autumn launch plan.
 ```
 
-This can be disabled in Settings → "Auto-register new files" if you prefer manual control.
+For the full rules, the template, the color names, the logo fallback, and metadata context, see [Metadata format](documentation/METADATA_FORMAT.md).
 
-#### Atomic metadata file
+## Settings and advanced features
 
-An `atomic` metadata file refers to a file that contains only one metadata entry.
-Register an atomic metadata file by specifying the `def-type: atomic` frontmatter.
+In **Settings → People Metadata**, you can set:
 
-An `atomic` metadata file is parsed according to the following rules:
-1. The name of the file is the full name of the person
-2. The contents of the file (excluding the frontmatter) form the metadata
+- **People folder.** You can also right-click a folder in the file explorer and select **Set as people folder**.
+- **Auto-register new files.** Adds the template to new files in the People folder.
+- **Default people file type.** The type for files that have no `def-type` property.
+- **Popover settings.** The trigger, the dismiss behavior, the size and the background color of the hover preview.
+- **Divider.** The line that separates person entries. You can use a dash (`---`) or an underscore (`___`).
 
-## Company Logo Fallback
+The plugin adds these commands. You can assign hotkeys to them:
 
-When a company logo image fails to load or is broken, the plugin automatically displays a default logo instead. The default logo shows the first two letters of the company name in a styled badge.
+- **Add a person** opens the form.
+- **Preview person under cursor** shows the preview for the name under the cursor.
+- **Refresh people** reads the metadata files again.
 
-### Features:
-- **Automatic detection**: The plugin detects when images fail to load
-- **Graceful fallback**: Shows a clean default logo instead of broken image icons
-- **Company initials**: Uses the first two letters of the company name (e.g., "TC" for "TechCorp")
-- **Consistent styling**: Matches the overall design of the plugin
-- **Accessibility**: Includes proper title attributes for screen readers
+Right-click an underlined name to see these options:
 
-### How it works:
-1. The plugin first attempts to load the specified company logo image
-2. If the image fails to load (broken URL, missing file, network error), it automatically replaces it with a default logo
-3. The default logo displays the company's initials in a styled badge
-4. If no company name is available, it shows "CO" as a generic fallback
+- **Go to definition** opens the person's entry.
+- **Edit definition** opens the entry for editing.
+- **Add a person** opens the form.
 
-This ensures that company information is always displayed consistently, even when logo images are unavailable.
+## Troubleshooting
 
-## Add a Person Modal
+### The plugin does not work
 
-The "Add a Person" command provides a user-friendly interface for adding new people to your metadata system.
+1. Set the People folder. Right-click a folder and select **Set as people folder**.
+2. Run **Refresh people**.
+3. Check that each metadata file has the correct `def-type` property.
 
-### Features:
-- **Intuitive form fields**: Clear labels and helpful placeholders guide you through the process
-- **Company selection**: Choose from existing companies or create a new one
-- **Automatic file management**: The plugin handles file creation and organization
-- **Form validation**: Ensures required information is provided
+### A name is not detected
 
-### Form Fields:
-1. **Full Name** (required): The person's complete name (e.g., "John Smith")
-2. **Job Title** (optional): Their position or role (e.g., "Dev Team Leader")
-3. **Department** (optional): The department they work in (e.g., "Engineering")
-4. **Description** (required): Notes and details about the person
-5. **Choose Company**: Select an existing company or create a new one
+1. Check that the `# Name` line matches the name in your note. The match ignores upper and lower case.
+2. Run **Refresh people**.
+3. Check that the file is in the People folder.
 
-### Company Options:
-- **Existing Companies**: The dropdown shows all current companies by name
-- **Create a new Company**: Automatically creates a new company file with proper template structure
+### Company colors do not show
 
-### How it works:
-1. Use the `Add a Person` command or right-click menu option
-2. Fill in the person's information
-3. Choose a company from the dropdown or select "Create a new Company"
-4. Click Save to add the person to the selected company file
+1. Check the `color` property in the frontmatter of the company file.
+2. Use a color name or a hex code. The [metadata format](documentation/METADATA_FORMAT.md#available-color-names) page lists the names.
+3. Run **Refresh people**.
 
-When creating a new company, the plugin automatically:
-- Generates a company file name based on the person's last name
-- Creates the file with proper frontmatter and template structure
-- Registers it as a consolidated definition file
-- Adds a placeholder logo that will use the default fallback
+## Documentation, feedback, and contributions
 
-## Metadata context
-> _TLDR:_ "Context" is synonymous with a metadata file. By specifying a context, you specify that you want to use specific metadata file(s) to source your metadata for the current note.
+- [Metadata format](documentation/METADATA_FORMAT.md): the full rules, templates and edge cases.
+- [Color guide](documentation/COMPANY_COLORS.md): every color name, with a preview.
+- [Issues](https://github.com/AdarBahar/Obsidian-people-data/issues): report bugs or request features.
+- [Discussions](https://github.com/AdarBahar/Obsidian-people-data/discussions): ask questions and share ideas.
 
-Metadata context refers to the repository of metadata that are available for the currently active note.
-By default, all notes have no context (you can think of this as being globally-scoped).
-This means that your newly-created notes will always have access to the combination of all metadata defined in your metadata files.
+I welcome feedback. If you find a bug or have an idea, open an issue.
 
-This behaviour can be overridden by specifying the "context" of your note.
-Each metadata file that you have is taken to be a separate context (hence your metadata should be structured accordingly).
-Once context(s) are declared for a note, it will only retrieve metadata from the specified contexts.
-You can think of this as having a local scope for the note.
-The note now sees only a limited subset of all your metadata.
+To contribute code:
 
-### Usage
+1. Fork the repository.
+2. Create a feature branch.
+3. Make your changes.
+4. Open a pull request.
 
-To add context to your note, you need to manually edit the note's properties.
-Add a `def-context` property which is a `List` type containing a list of file paths corresponding to the selected metadata files.
+For a major change, open an issue first to discuss it.
 
-### How it works
+## License and acknowledgments
 
-Context is specified by adding a `def-context` property to your note's frontmatter.
-In source, it will look something like this:
-```
----
-def-context:
-	- metadata/people1.md
-	- metadata/people2.md
----
-```
+People Metadata is licensed under the MIT License. See [LICENSE](LICENSE).
 
-You can edit your properties directly using Obsidian's properties panel or by editing the frontmatter in source mode.
-
-### Removing contexts
-
-To remove contexts, simply remove the file path from the `def-context` property.
-Or if you want to remove all contexts, you can delete the `def-context` property altogether.
-
-## Refreshing people
-
-Whenever you find that the plugin is not detecting certain people or people files, run the `Refresh people` command to manually get the plugin to read your people files.
-
-## 🐛 Troubleshooting
-
-### Plugin Not Working?
-1. Make sure you have set a People metadata folder using the right-click menu
-2. Try running the "Refresh people" command
-3. Check that your files have the correct `def-type: consolidated` frontmatter
-
-### Names Not Being Detected?
-1. Ensure the person's name matches the `# Name` line (the match ignores upper and lower case)
-2. Run "Refresh people" command to reload the metadata
-3. Check that the person file is in the correct People folder
-
-### Company Colors Not Showing?
-1. Verify the color property is set correctly in the company file frontmatter
-2. Use a predefined color name, a hex code (`#0066cc`), a CSS color name, or `rgb()`/`hsl()`. Other values are ignored.
-3. Run the "Refresh people" command
-
-## 📚 Documentation
-
-- **[Color Guide](documentation/COMPANY_COLORS.md)** - Complete list of available colors
-- **[Development Notes](documentation/)** - Additional documentation and examples
-
-## 🤝 Support & Feedback
-
-- **Issues**: [Report bugs or request features](https://github.com/AdarBahar/Obsidian-people-data/issues)
-- **Discussions**: [Community discussions](https://github.com/AdarBahar/Obsidian-people-data/discussions)
-
-I welcome any feedback on how to improve this tool. Please open a GitHub issue if you find any bugs or have ideas for features or improvements.
-
-## 🛠️ Contributing
-
-If you're a programmer and would like to see certain features implemented, I welcome and would be grateful for contributions. Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-For major changes, please open an issue first to discuss what you would like to change.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built for the [Obsidian](https://obsidian.md) community
-- Inspired by the need for better people and company management in personal knowledge bases
+Built for the [Obsidian](https://obsidian.md) community. It comes from the need for better people and company management in personal knowledge bases.
