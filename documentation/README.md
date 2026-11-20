@@ -5,6 +5,7 @@ This folder contains documentation, guides, and development notes for the Obsidi
 ## Files
 
 ### User Documentation
+- **[METADATA_FORMAT.md](METADATA_FORMAT.md)** - Full rules for consolidated and atomic metadata files, templates, logo fallback and metadata context
 - **[COMPANY_COLORS.md](COMPANY_COLORS.md)** - Complete guide to using company color names and hex codes in frontmatter properties
 
 ### Development Documentation  
